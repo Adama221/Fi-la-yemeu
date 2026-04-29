@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { pb } from '../lib/pocketbase';
 
 interface SiteSettings {
   logo: string;
   primaryColor: string;
+  secondaryColor: string;
+  homepageText: string;
 }
 
 interface SettingsContextType {
@@ -16,18 +17,24 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<SiteSettings>({
     logo: '/logo.png', // Default
-    primaryColor: '#DAA520' // Default Gold
+    primaryColor: '#314227', // Default Forest Green
+    secondaryColor: '#D4A373',
+    homepageText: 'Boutique'
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const data = await pb.collection('settings').getFirstListItem('type="general"');
-        if (data) {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        
+        if (data && data.settings) {
           setSettings({
-            logo: data.logo || '/logo.png',
-            primaryColor: data.primary_color || '#DAA520'
+            logo: data.settings.logo || '/logo.png',
+            primaryColor: data.settings.primary_color || '#314227',
+            secondaryColor: data.settings.secondary_color || '#D4A373',
+            homepageText: data.settings.homepage_text || 'Bienvenue'
           });
         }
       } catch (error) {
@@ -38,29 +45,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     fetchSettings();
-
-    // Listen to real-time updates for site settings
-    pb.collection('settings').subscribe('*', function (e) {
-      if (e.action === 'create' || e.action === 'update') {
-        const data = e.record as any;
-        if (data.type === 'general') {
-          setSettings({
-            logo: data.logo || '/logo.png',
-            primaryColor: data.primary_color || '#DAA520'
-          });
-        }
-      }
-    }).catch(console.warn);
-
-    return () => {
-      pb.collection('settings').unsubscribe('*').catch(console.warn);
-    };
   }, []);
-
 
   return (
     <SettingsContext.Provider value={{ settings, loading }}>
-      <div style={{ '--primary-custom': settings.primaryColor } as React.CSSProperties}>
+      <div style={{ '--primary-custom': settings.primaryColor, '--secondary-custom': settings.secondaryColor } as React.CSSProperties}>
         {children}
       </div>
     </SettingsContext.Provider>

@@ -68,7 +68,9 @@ export async function initDb() {
       cover TEXT,
       description TEXT DEFAULT 'Bienvenue',
       primary_color TEXT DEFAULT '#8B4513',
-      font TEXT DEFAULT 'Poppins'
+      font TEXT DEFAULT 'Poppins',
+      secondary_color TEXT DEFAULT '#D4A373',
+      homepage_text TEXT DEFAULT 'Bienvenue'
     );
   `);
 

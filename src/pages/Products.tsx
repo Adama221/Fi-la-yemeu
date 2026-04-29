@@ -17,10 +17,9 @@ export default function Products() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const data = await pb.collection('products').getFullList({
-          sort: '-created',
-        });
-        setProducts(data);
+        const prodRes = await fetch('/api/products');
+        const prodData = await prodRes.json();
+        setProducts(prodData.items || []);
       } catch (error) {
         console.warn("Failed to fetch products", error);
       } finally {
@@ -29,15 +28,6 @@ export default function Products() {
     };
 
     fetchProducts();
-
-    // Set up realtime subscription
-    pb.collection('products').subscribe('*', function (e) {
-      fetchProducts();
-    }).catch(console.warn);
-
-    return () => {
-      pb.collection('products').unsubscribe('*').catch(console.warn);
-    };
   }, []);
 
 

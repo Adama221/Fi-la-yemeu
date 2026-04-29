@@ -90,11 +90,19 @@ async function startServer() {
   app.post('/api/admin/products', adminRequired, upload.single('image'), async (req, res) => {
     const { name, price, description } = req.body;
     const image = req.file ? '/uploads/' + req.file.filename : null;
-    await db.run(
+    const result = await db.run(
       'INSERT INTO products (name, price, description, image) VALUES (?, ?, ?, ?)',
       [name, price, description, image]
     );
-    res.json({ msg: "product added" });
+    res.json({ 
+      message: "Produit ajouté avec succès",
+      product: {
+        id: result.lastID,
+        name,
+        price: Number(price),
+        image
+      }
+    });
   });
 
   app.post('/api/admin/products/:id/update', adminRequired, upload.single('image'), async (req, res) => {
@@ -144,22 +152,31 @@ async function startServer() {
   });
 
   // ====================== PAYMENT VALIDATION ======================
-  app.post('/api/admin/orders/validate-wave', adminRequired, async (req, res) => {
-    const { order_id, tx } = req.body;
+  app.post('/api/admin/orders/validate-wave-payment', adminRequired, async (req, res) => {
+    const { order_id, transaction_id } = req.body;
     const o = await db.get('SELECT * FROM orders WHERE id = ?', [order_id]);
-    if (o && o.status !== "paid") {
-      await db.run('UPDATE orders SET status = ?, transaction_id = ? WHERE id = ?', ['paid', tx, order_id]);
-      await handleCommission(o);
+    
+    if (!o) return res.status(404).json({ error: "Order not found" });
+
+    if (o.status === "paid") {
+      return res.status(400).json({ error: "Déjà payé" });
     }
-    res.json({ msg: "paid" });
+
+    await db.run('UPDATE orders SET status = ?, transaction_id = ? WHERE id = ?', ['paid', transaction_id, order_id]);
+    await handleCommission(o);
+    
+    res.json({ message: "Paiement validé" });
   });
 
   app.post('/api/webhook/orange', async (req, res) => {
     const data = req.body;
-    if (data.status === "SUCCESS") {
-      const o = await db.get('SELECT * FROM orders WHERE id = ?', [data.order_id]);
+    const order_id = data.order_id;
+    const status = data.status;
+
+    if (status === "SUCCESS") {
+      const o = await db.get('SELECT * FROM orders WHERE id = ?', [order_id]);
       if (o && o.status !== "paid") {
-        await db.run('UPDATE orders SET status = ?, transaction_id = ? WHERE id = ?', ['paid', data.transaction_id, data.order_id]);
+        await db.run('UPDATE orders SET status = ?, transaction_id = ? WHERE id = ?', ['paid', data.transaction_id, order_id]);
         await handleCommission(o);
       }
     }
@@ -186,13 +203,26 @@ async function startServer() {
       updates.push('cover = ?');
       values.push('/uploads/' + files.cover[0].filename);
     }
+    if (req.body.primary_color !== undefined) {
+      updates.push('primary_color = ?');
+      values.push(req.body.primary_color);
+    } else if (req.body.color !== undefined) {
+      updates.push('primary_color = ?');
+      values.push(req.body.color);
+    }
+    
+    if (req.body.secondary_color !== undefined) {
+      updates.push('secondary_color = ?');
+      values.push(req.body.secondary_color);
+    }
+    if (req.body.text !== undefined) {
+      updates.push('homepage_text = ?');
+      values.push(req.body.text);
+    }
+    
     if (req.body.description !== undefined) {
       updates.push('description = ?');
       values.push(req.body.description);
-    }
-    if (req.body.color !== undefined) {
-      updates.push('primary_color = ?');
-      values.push(req.body.color);
     }
     if (req.body.font !== undefined) {
       updates.push('font = ?');
@@ -203,7 +233,12 @@ async function startServer() {
       values.push(1); // WHERE id = 1
       await db.run(`UPDATE site_settings SET ${updates.join(', ')} WHERE id = ?`, values);
     }
-    res.json({ msg: "design updated" });
+    res.json({ message: "Design modifié" });
+  });
+
+  app.get('/api/settings', async (req, res) => {
+    const settings = await db.get('SELECT * FROM site_settings WHERE id = 1');
+    res.json({ settings });
   });
 
   // ====================== DASHBOARD ======================

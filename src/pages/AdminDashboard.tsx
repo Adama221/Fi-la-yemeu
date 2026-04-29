@@ -10,7 +10,8 @@ import { useAuth } from '../contexts/AuthContext';
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
-  const [branding, setBranding] = useState({ logo: '', color: '#DAA520' });
+  const [branding, setBranding] = useState({ logo: '', primary_color: '#314227', secondary_color: '#D4A373', text: 'Bienvenue' });
+  const [brandingFile, setBrandingFile] = useState<File | null>(null);
   const [paymentSettings, setPaymentSettings] = useState({
     wave_base_url: '',
     orange_api_url: '',
@@ -33,25 +34,16 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       if (isAdmin) {
-        // Fetch Settings (Fallback to API or handle missing PB collection config by trying to get list)
+        // Fetch Settings
         try {
-          const generalSettings = await pb.collection('settings').getFirstListItem('type="general"');
-          if (generalSettings) {
+          const res = await fetch('/api/settings');
+          const data = await res.json();
+          if (data.settings) {
             setBranding({
-              logo: generalSettings.logo || '',
-              color: generalSettings.primary_color || '#DAA520'
-            });
-          }
-        } catch(e) {}
-
-        try {
-          const paySettings = await pb.collection('settings').getFirstListItem('type="payment"');
-          if (paySettings) {
-            setPaymentSettings({
-              wave_base_url: paySettings.wave_base_url || '',
-              orange_api_url: paySettings.orange_api_url || '',
-              orange_merchant_key: paySettings.orange_merchant_key || '',
-              orange_token: paySettings.orange_token || ''
+              logo: data.settings.logo || '',
+              primary_color: data.settings.primary_color || '#314227',
+              secondary_color: data.settings.secondary_color || '#D4A373',
+              text: data.settings.homepage_text || 'Bienvenue'
             });
           }
         } catch(e) {}
@@ -59,53 +51,56 @@ export default function AdminDashboard() {
 
       // Fetch Products
       try {
-        const prods = await pb.collection('products').getFullList({ sort: '-created' });
-        setProducts(prods || []);
+        const prodRes = await fetch('/api/products');
+        const prodData = await prodRes.json();
+        setProducts(prodData.items || []);
       } catch(e) {}
 
       // Fetch Orders
-      try {
-        const ords = await pb.collection('orders').getFullList({ sort: '-created' });
-        setOrders(ords || []);
-      } catch(e) {}
+      if (isAdmin) {
+         try {
+           const token = pb.authStore.token || 'mock-token-pape';
+           const ordsRes = await fetch('/api/admin/orders', {
+             headers: { 'Authorization': `Bearer ${token}` }
+           });
+           const ordsData = await ordsRes.json();
+           setOrders(ordsData.orders || []);
+         } catch(e) {}
+      }
     };
 
     fetchData();
-
-    // Realtime listeners
-    pb.collection('products').subscribe('*', fetchData).catch(console.warn);
-    pb.collection('orders').subscribe('*', fetchData).catch(console.warn);
-
-    return () => {
-      pb.collection('products').unsubscribe('*').catch(console.warn);
-      pb.collection('orders').unsubscribe('*').catch(console.warn);
-    };
   }, [isAdmin]);
 
   const handleUpdateDesign = async () => {
     try {
-      let record;
-      try {
-         record = await pb.collection('settings').getFirstListItem('type="general"');
-      } catch(e) {}
+      const token = pb.authStore.token || 'mock-token-pape';
 
-      if (record) {
-        await pb.collection('settings').update(record.id, {
-          logo: branding.logo,
-          primary_color: branding.color,
-        });
-      } else {
-        await pb.collection('settings').create({
-          type: 'general',
-          logo: branding.logo,
-          primary_color: branding.color,
-        });
+      const formData = new FormData();
+      if (brandingFile) {
+        formData.append('logo', brandingFile);
+      }
+      formData.append('primary_color', branding.primary_color);
+      formData.append('secondary_color', branding.secondary_color);
+      formData.append('text', branding.text);
+
+      const res = await fetch('/api/admin/design', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!res.ok) {
+         const d = await res.json();
+         throw new Error(d.error || "Erreur serveur");
       }
       
       alert('Design modifié avec succès');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Erreur lors de la mise à jour');
+      alert('Erreur lors de la mise à jour: ' + e.message);
     }
   };
 
@@ -134,25 +129,57 @@ export default function AdminDashboard() {
     }
   };
 
+  const [productImageFile, setProductImageFile] = useState<File | null>(null);
+
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await pb.collection('products').create({
-        name: productName,
-        price: Number(productPrice),
-        category: productCategory,
-        description: productDescription,
-        image: productImage
+      const token = pb.authStore.token;
+      if (!token) throw new Error("Non authentifié");
+
+      const formData = new FormData();
+      formData.append('name', productName);
+      formData.append('price', String(productPrice));
+      formData.append('description', productDescription);
+      
+      // Keep category for UI frontend state, even if not fully supported in backend currently
+      if (productImageFile) {
+        formData.append('image', productImageFile);
+      } else if (productImage) {
+        // We can just pass the string if it's still a URL, but the user requested file upload
+      }
+
+      // Since we implemented the custom express backend
+      const res = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
       });
+
+      if (!res.ok) {
+         const d = await res.json();
+         throw new Error(d.error || "Erreur serveur");
+      }
 
       setIsAddProductOpen(false);
       alert('Produit ajouté avec succès!');
       setProductName('');
       setProductPrice('');
       setProductDescription('');
-    } catch (error) {
+      setProductImageFile(null);
+      
+      // refresh products
+      try {
+        const prodRes = await fetch('/api/products');
+        const data = await prodRes.json();
+        setProducts(data.items || []);
+      } catch (err) {}
+
+    } catch (error: any) {
       console.error(error);
-      alert('Erreur lors de l\'ajout du produit');
+      alert("Erreur lors de l'ajout du produit: " + error.message);
     }
   };
 
@@ -610,13 +637,16 @@ export default function AdminDashboard() {
             <h3 className="text-4xl font-serif font-bold italic mb-12 tracking-tight text-primary">Identité Visuelle</h3>
             <div className="space-y-10">
               <div className="space-y-4">
-                <label className="text-[10px] uppercase font-bold tracking-[0.4em] text-primary/40">Logo URL</label>
+                <label className="text-[10px] uppercase font-bold tracking-[0.4em] text-primary/40">Logo (Image)</label>
                 <input 
-                  type="text" 
-                  value={branding.logo}
-                  onChange={e => setBranding({...branding, logo: e.target.value})}
+                  type="file" 
+                  accept="image/*"
+                  onChange={e => {
+                    if (e.target.files && e.target.files.length > 0) {
+                       setBrandingFile(e.target.files[0]);
+                    }
+                  }}
                   className="w-full bg-accent-soft/30 border border-primary/10 p-5 text-[10px] font-bold tracking-widest outline-none focus:border-secondary transition-all rounded-2xl"
-                  placeholder="https://example.com/logo.png"
                 />
               </div>
               <div className="space-y-4">
@@ -624,17 +654,43 @@ export default function AdminDashboard() {
                 <div className="flex gap-6 items-center">
                   <input 
                     type="color" 
-                    value={branding.color}
-                    onChange={e => setBranding({...branding, color: e.target.value})}
+                    value={branding.primary_color}
+                    onChange={e => setBranding({...branding, primary_color: e.target.value})}
                     className="w-20 h-20 rounded-2xl border-none outline-none cursor-pointer"
                   />
                   <input 
                     type="text" 
-                    value={branding.color}
-                    onChange={e => setBranding({...branding, color: e.target.value})}
+                    value={branding.primary_color}
+                    onChange={e => setBranding({...branding, primary_color: e.target.value})}
                     className="flex-grow bg-accent-soft/30 border border-primary/10 p-5 text-[10px] font-bold tracking-widest outline-none focus:border-secondary transition-all rounded-2xl uppercase"
                   />
                 </div>
+              </div>
+              <div className="space-y-4">
+                <label className="text-[10px] uppercase font-bold tracking-[0.4em] text-primary/40">Couleur Secondaire</label>
+                <div className="flex gap-6 items-center">
+                  <input 
+                    type="color" 
+                    value={branding.secondary_color}
+                    onChange={e => setBranding({...branding, secondary_color: e.target.value})}
+                    className="w-20 h-20 rounded-2xl border-none outline-none cursor-pointer"
+                  />
+                  <input 
+                    type="text" 
+                    value={branding.secondary_color}
+                    onChange={e => setBranding({...branding, secondary_color: e.target.value})}
+                    className="flex-grow bg-accent-soft/30 border border-primary/10 p-5 text-[10px] font-bold tracking-widest outline-none focus:border-secondary transition-all rounded-2xl uppercase"
+                  />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <label className="text-[10px] uppercase font-bold tracking-[0.4em] text-primary/40">Texte Page d'Accueil</label>
+                <textarea 
+                  value={branding.text}
+                  onChange={e => setBranding({...branding, text: e.target.value})}
+                  className="w-full h-32 bg-accent-soft/30 border border-primary/10 p-5 text-sm font-sans outline-none focus:border-secondary transition-all rounded-2xl"
+                  placeholder="Texte de la page d'accueil..."
+                />
               </div>
               <button 
                 onClick={handleUpdateDesign}
@@ -773,8 +829,17 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="space-y-4">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">URL du Visuel</label>
-                    <input type="url" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans text-sm text-primary/80" placeholder="https://..." value={productImage} onChange={e => setProductImage(e.target.value)} />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Visuel Produit (Image)</label>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans text-sm text-primary/80" 
+                      onChange={e => {
+                        if (e.target.files && e.target.files.length > 0) {
+                           setProductImageFile(e.target.files[0]);
+                        }
+                      }} 
+                    />
                   </div>
 
                   <div className="flex gap-4 pt-8 text-[10px] font-bold uppercase tracking-widest">

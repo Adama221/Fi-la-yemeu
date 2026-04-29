@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, Chrome, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { pb } from '../lib/pocketbase';
@@ -131,9 +131,16 @@ export default function Login() {
           <Chrome className="w-4 h-4 text-secondary" /> Continuer avec Google
         </button>
 
-        <div className="mt-8 pt-6 border-t border-stone-50 text-center">
+        <div className="mt-8 pt-6 border-t border-stone-50 text-center space-y-4">
+          <p className="text-[10px] text-text-deep/60">
+            Vous n'avez pas de compte ?{' '}
+            <Link to="/register" className="text-secondary font-bold hover:underline">
+              S'inscrire
+            </Link>
+          </p>
+
           <p className="text-[9px] text-text-deep/40 uppercase tracking-widest leading-relaxed">
-            Accès réservé au personnel autorisé. <br/> 
+            Accès sécurisé. <br/> 
             <span className="flex items-center justify-center gap-1 mt-2 font-bold text-stone-300">
               <Lock className="w-2 h-2" /> Sécurité Chiffrée
             </span>
