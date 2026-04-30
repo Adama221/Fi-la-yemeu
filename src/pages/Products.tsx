@@ -17,9 +17,8 @@ export default function Products() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const prodRes = await fetch('/api/products');
-        const prodData = await prodRes.json();
-        setProducts(prodData.items || []);
+        const prodData = await pb.collection('products').getFullList({ sort: '-created' });
+        setProducts(prodData || []);
       } catch (error) {
         console.warn("Failed to fetch products", error);
       } finally {
@@ -28,6 +27,16 @@ export default function Products() {
     };
 
     fetchProducts();
+
+    pb.collection('products').subscribe('*', function (e) {
+      if (e.action === 'create') setProducts(prev => [e.record, ...prev]);
+      if (e.action === 'update') setProducts(prev => prev.map(p => p.id === e.record.id ? e.record : p));
+      if (e.action === 'delete') setProducts(prev => prev.filter(p => p.id !== e.record.id));
+    });
+
+    return () => {
+      pb.collection('products').unsubscribe('*');
+    };
   }, []);
 
 
@@ -125,7 +134,7 @@ export default function Products() {
                     <Link to={`/product/${product.id}`}>
                       <div className="relative aspect-square overflow-hidden mb-6 bg-accent-soft rounded-[2rem]">
                         <img 
-                          src={product.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80'} 
+                          src={product.image_file ? pb.files.getURL(product, product.image_file) : (product.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80')} 
                           alt={product.name}
                           className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                         />

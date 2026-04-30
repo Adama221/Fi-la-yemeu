@@ -49,8 +49,13 @@ export default function Register() {
 
     } catch (err: any) {
       console.error(err);
-      if (err.message === 'Something went wrong.') {
+      if (err.status === 0) {
          setError("Serveur hors ligne ou injoignable. Le backend PocketBase est-il démarré ?");
+      } else if (err.data && err.data.data) {
+         const msgs = Object.values(err.data.data).map((e: any) => e.message).join(' ');
+         setError("Erreur : " + msgs);
+      } else if (err.data && err.data.message) {
+         setError("Erreur : " + err.data.message);
       } else {
          setError("Erreur lors de l'inscription : " + err.message);
       }

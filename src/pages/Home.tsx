@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { formatPrice } from '../lib/utils';
 import { useSettings } from '../contexts/SettingsContext';
 
+import { pb } from '../lib/pocketbase';
+
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
   const { settings } = useSettings();
@@ -12,8 +14,7 @@ export default function Home() {
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
-        const prodRes = await fetch('/api/products');
-        const prodData = await prodRes.json();
+        const prodData = await pb.collection('products').getList(1, 4, { sort: '-created' });
         setFeaturedProducts(prodData.items || []);
       } catch (error) {
         console.warn("Failed to fetch featured products", error);
@@ -21,6 +22,16 @@ export default function Home() {
     };
 
     fetchFeatured();
+    
+    pb.collection('products').subscribe('*', function (e) {
+      if (e.action === 'create' || e.action === 'update' || e.action === 'delete') {
+         fetchFeatured();
+      }
+    });
+
+    return () => {
+      pb.collection('products').unsubscribe('*');
+    };
   }, []);
 
   return (
@@ -61,7 +72,7 @@ export default function Home() {
               <Link to={`/product/${product.id}`}>
                 <div className="relative aspect-[4/5] overflow-hidden mb-6 bg-accent-soft rounded-[2rem] shadow-sm">
                   <img 
-                    src={product.image || `https://images.unsplash.com/photo-${i === 1 ? '1620755100705-d1297e685f0a' : i === 2 ? '1572804013307-f971ad9f7152' : '1523381210434-271e8be1f52b'}?auto=format&fit=crop&q=80&w=800`}
+                    src={product.image_file ? pb.files.getURL(product, product.image_file) : (product.image || `https://images.unsplash.com/photo-${i === 1 ? '1620755100705-d1297e685f0a' : i === 2 ? '1572804013307-f971ad9f7152' : '1523381210434-271e8be1f52b'}?auto=format&fit=crop&q=80&w=800`)}
                     alt={product.name}
                     className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                   />
@@ -103,9 +114,9 @@ export default function Home() {
                 <h4 className="text-xs uppercase tracking-[0.2em] font-bold text-secondary mb-2 text-center md:text-left">Rejoignez l'élite</h4>
                 <p className="text-[11px] text-text-deep/80 text-center md:text-left">Gagnez <span className="font-bold">10% de commission</span> sur chaque vente parrainée.</p>
               </div>
-              <button className="border border-primary text-primary px-6 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-primary hover:text-white transition-all whitespace-nowrap">
+              <Link to="/register" className="border border-primary text-primary px-6 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-primary hover:text-white transition-all whitespace-nowrap inline-block text-center">
                 Devenir Affilié
-              </button>
+              </Link>
            </div>
         </div>
       </section>

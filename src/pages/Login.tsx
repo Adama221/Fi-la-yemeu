@@ -44,10 +44,15 @@ export default function Login() {
         await pb.collection('_superusers').authWithPassword(email, password);
       } catch (err2: any) {
         console.error(error);
-        if (error.message === 'Something went wrong.') {
-           alert("Serveur hors ligne. Veuillez vérifier que le backend PocketBase est en cours d'exécution.");
+        if (error.status === 0) {
+           alert("Serveur hors ligne ou injoignable. Le backend PocketBase est-il démarré ?");
+        } else if (error.data && error.data.data) {
+           const msgs = Object.values(error.data.data).map((e: any) => e.message).join(' ');
+           alert("Erreur : " + msgs);
+        } else if (error.data && error.data.message) {
+           alert("Erreur : " + error.data.message);
         } else {
-           alert('Erreur de connexion : ' + error.message);
+           alert("Erreur de connexion : " + error.message);
         }
       }
     } finally {

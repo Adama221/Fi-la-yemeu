@@ -30,77 +30,117 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
 
-  // Fetch settings & products on load
+  const [affiliates, setAffiliates] = useState<any[]>([]);
+
+  // Fetch settings, products, orders, affiliates on load
   useEffect(() => {
     const fetchData = async () => {
       if (isAdmin) {
-        // Fetch Settings
+        // Fetch Settings Branding
         try {
-          const res = await fetch('/api/settings');
-          const data = await res.json();
-          if (data.settings) {
+          const brands = await pb.collection('settings').getList(1, 1, { filter: 'type="branding"' });
+          if (brands.items.length > 0) {
+            const data = brands.items[0];
             setBranding({
-              logo: data.settings.logo || '',
-              primary_color: data.settings.primary_color || '#314227',
-              secondary_color: data.settings.secondary_color || '#D4A373',
-              text: data.settings.homepage_text || 'Bienvenue'
+               logo: data.logo || '',
+               primary_color: data.primary_color || '#314227',
+               secondary_color: data.secondary_color || '#D4A373',
+               text: data.homepage_text || 'Bienvenue'
             });
           }
+        } catch(e) {}
+
+        // Fetch Settings Payment
+        try {
+          const pays = await pb.collection('settings').getList(1, 1, { filter: 'type="payment"' });
+          if (pays.items.length > 0) {
+            const data = pays.items[0];
+            setPaymentSettings({
+               wave_base_url: data.wave_base_url || '',
+               orange_api_url: data.orange_api_url || '',
+               orange_merchant_key: data.orange_merchant_key || '',
+               orange_token: data.orange_token || ''
+            });
+          }
+        } catch(e) {}
+
+        // Fetch Orders
+        try {
+          const ords = await pb.collection('orders').getFullList({ sort: '-created' });
+          setOrders(ords);
+        } catch(e) {}
+
+        // Fetch Affiliates
+        try {
+          const affs = await pb.collection('affiliates').getFullList({ sort: '-created', expand: 'user' });
+          setAffiliates(affs);
         } catch(e) {}
       }
 
       // Fetch Products
       try {
-        const prodRes = await fetch('/api/products');
-        const prodData = await prodRes.json();
-        setProducts(prodData.items || []);
+        const prods = await pb.collection('products').getFullList({ sort: '-created' });
+        setProducts(prods);
       } catch(e) {}
-
-      // Fetch Orders
-      if (isAdmin) {
-         try {
-           const token = pb.authStore.token || 'mock-token-pape';
-           const ordsRes = await fetch('/api/admin/orders', {
-             headers: { 'Authorization': `Bearer ${token}` }
-           });
-           const ordsData = await ordsRes.json();
-           setOrders(ordsData.orders || []);
-         } catch(e) {}
-      }
     };
 
     fetchData();
+
+    // Subscribe to real-time events
+    pb.collection('products').subscribe('*', function (e) {
+      if (e.action === 'create') setProducts(prev => [e.record, ...prev]);
+      if (e.action === 'update') setProducts(prev => prev.map(p => p.id === e.record.id ? e.record : p));
+      if (e.action === 'delete') setProducts(prev => prev.filter(p => p.id !== e.record.id));
+    });
+
+    pb.collection('orders').subscribe('*', function (e) {
+      if (e.action === 'create') setOrders(prev => [e.record, ...prev]);
+      if (e.action === 'update') setOrders(prev => prev.map(o => o.id === e.record.id ? e.record : o));
+      if (e.action === 'delete') setOrders(prev => prev.filter(o => o.id !== e.record.id));
+    });
+
+    pb.collection('affiliates').subscribe('*', function (e) {
+      if (e.action === 'create') setAffiliates(prev => [e.record, ...prev]);
+      if (e.action === 'update') setAffiliates(prev => prev.map(a => a.id === e.record.id ? e.record : a));
+      if (e.action === 'delete') setAffiliates(prev => prev.filter(a => a.id !== e.record.id));
+    });
+
+    return () => {
+      pb.collection('products').unsubscribe('*');
+      pb.collection('orders').unsubscribe('*');
+      pb.collection('affiliates').unsubscribe('*');
+    };
   }, [isAdmin]);
 
   const handleUpdateDesign = async () => {
     try {
-      const token = pb.authStore.token || 'mock-token-pape';
+      let record;
+      try {
+         const brands = await pb.collection('settings').getList(1, 1, { filter: 'type="branding"' });
+         if (brands.items.length > 0) record = brands.items[0];
+      } catch(e) {}
 
       const formData = new FormData();
-      if (brandingFile) {
-        formData.append('logo', brandingFile);
-      }
+      formData.append('type', 'branding');
       formData.append('primary_color', branding.primary_color);
       formData.append('secondary_color', branding.secondary_color);
-      formData.append('text', branding.text);
+      formData.append('homepage_text', branding.text);
+      if (brandingFile) {
+        formData.append('logo_file', brandingFile);
+      } else {
+        formData.append('logo', branding.logo);
+      }
 
-      const res = await fetch('/api/admin/design', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!res.ok) {
-         const d = await res.json();
-         throw new Error(d.error || "Erreur serveur");
+      if (record) {
+         await pb.collection('settings').update(record.id, formData);
+      } else {
+         await pb.collection('settings').create(formData);
       }
       
       alert('Design modifié avec succès');
     } catch (e: any) {
       console.error(e);
-      alert('Erreur lors de la mise à jour: ' + e.message);
+      alert('Erreur: ' + e.message);
     }
   };
 
@@ -108,18 +148,19 @@ export default function AdminDashboard() {
     try {
       let record;
       try {
-         record = await pb.collection('settings').getFirstListItem('type="payment"');
+         const req = await pb.collection('settings').getList(1, 1, { filter: 'type="payment"' });
+         if (req.items.length > 0) record = req.items[0];
       } catch(e) {}
 
+      const data = {
+         type: 'payment',
+         ...paymentSettings
+      };
+
       if (record) {
-        await pb.collection('settings').update(record.id, {
-          ...paymentSettings,
-        });
+        await pb.collection('settings').update(record.id, data);
       } else {
-        await pb.collection('settings').create({
-          type: 'payment',
-          ...paymentSettings,
-        });
+        await pb.collection('settings').create(data);
       }
 
       alert('Paramètres de paiement mis à jour');
@@ -134,34 +175,19 @@ export default function AdminDashboard() {
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = pb.authStore.token;
-      if (!token) throw new Error("Non authentifié");
-
       const formData = new FormData();
       formData.append('name', productName);
       formData.append('price', String(productPrice));
       formData.append('description', productDescription);
+      formData.append('category', productCategory);
       
-      // Keep category for UI frontend state, even if not fully supported in backend currently
       if (productImageFile) {
-        formData.append('image', productImageFile);
+        formData.append('image_file', productImageFile);
       } else if (productImage) {
-        // We can just pass the string if it's still a URL, but the user requested file upload
+        formData.append('image', productImage);
       }
 
-      // Since we implemented the custom express backend
-      const res = await fetch('/api/admin/products', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!res.ok) {
-         const d = await res.json();
-         throw new Error(d.error || "Erreur serveur");
-      }
+      await pb.collection('products').create(formData);
 
       setIsAddProductOpen(false);
       alert('Produit ajouté avec succès!');
@@ -169,14 +195,6 @@ export default function AdminDashboard() {
       setProductPrice('');
       setProductDescription('');
       setProductImageFile(null);
-      
-      // refresh products
-      try {
-        const prodRes = await fetch('/api/products');
-        const data = await prodRes.json();
-        setProducts(data.items || []);
-      } catch (err) {}
-
     } catch (error: any) {
       console.error(error);
       alert("Erreur lors de l'ajout du produit: " + error.message);
@@ -192,11 +210,13 @@ export default function AdminDashboard() {
     alert('Préparation de l\'exportation CSV... Le téléchargement commencera sous peu.');
   };
 
+  const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+  
   const stats = [
-    { title: 'Ventes Totales', value: '450,000 FCFA', icon: <DollarSign className="w-5 h-5 text-green-500" />, trend: '+12.5%' },
-    { title: 'Commandes', value: '24', icon: <ShoppingCart className="w-5 h-5 text-blue-500" />, trend: '+3 initial' },
-    { title: 'Affiliés Actifs', value: '12', icon: <Users className="w-5 h-5 text-purple-500" />, trend: 'Stable' },
-    { title: 'Produits', value: products.length.toString(), icon: <Package className="w-5 h-5 text-orange-500" />, trend: '+2 cette semaine' },
+    { title: 'Ventes Totales', value: formatPrice(totalSales), icon: <DollarSign className="w-5 h-5 text-green-500" />, trend: 'Global' },
+    { title: 'Commandes', value: orders.length.toString(), icon: <ShoppingCart className="w-5 h-5 text-blue-500" />, trend: 'Enregistré' },
+    { title: 'Affiliés', value: affiliates.length.toString(), icon: <Users className="w-5 h-5 text-purple-500" />, trend: 'Inscrits' },
+    { title: 'Produits', value: products.length.toString(), icon: <Package className="w-5 h-5 text-orange-500" />, trend: 'Katalog' },
   ];
 
   return (
@@ -314,16 +334,18 @@ export default function AdminDashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                     key={i} 
-                    className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-primary/5 group hover:scale-105 transition-transform duration-500"
+                    className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-primary/5 border border-primary/5 group hover:scale-105 transition-all duration-500 flex flex-col justify-between min-h-[180px]"
                  >
-                    <div className="flex justify-between items-start mb-6">
-                       <div className="w-12 h-12 bg-accent-soft rounded-2xl flex items-center justify-center group-hover:bg-secondary transition-colors group-hover:text-white">{stat.icon}</div>
-                       <span className={`text-[10px] font-bold px-3 py-1 bg-accent-soft/50 rounded-full ${stat.trend.startsWith('+') ? 'text-secondary' : 'text-primary/40'}`}>
+                    <div className="flex justify-between items-start mb-4">
+                       <div className="w-12 h-12 bg-accent-soft rounded-2xl flex items-center justify-center group-hover:bg-secondary transition-colors duration-500 group-hover:text-white shadow-sm shrink-0">{stat.icon}</div>
+                       <span className={`text-[9px] font-bold px-3 py-1.5 bg-accent-soft/30 rounded-full text-secondary tracking-widest uppercase`}>
                          {stat.trend}
                        </span>
                     </div>
-                    <p className="text-[10px] uppercase font-bold tracking-widest text-primary/40 mb-2">{stat.title}</p>
-                    <h3 className="text-3xl font-serif font-bold text-primary italic">{stat.value}</h3>
+                    <div className="mt-auto">
+                      <p className="text-[10px] uppercase font-bold tracking-widest text-primary/40 mb-1">{stat.title}</p>
+                      <h3 className="text-3xl sm:text-4xl font-serif font-bold text-primary italic truncate">{stat.value}</h3>
+                    </div>
                  </motion.div>
                ))}
             </div>
@@ -456,7 +478,7 @@ export default function AdminDashboard() {
                     <tr key={item.id} className="border-b border-primary/5 hover:bg-accent-soft/10 transition-colors">
                       <td className="px-10 py-6 flex items-center gap-4">
                         <div className="w-12 h-12 bg-accent-soft rounded-xl overflow-hidden shadow-sm">
-                          <img src={item.image || `https://images.unsplash.com/photo-${1549439602 + i}?auto=format&fit=crop&q=80&w=100`} className="w-full h-full object-cover" alt="" />
+                          <img src={item.image_file ? pb.files.getURL(item, item.image_file) : item.image || `https://images.unsplash.com/photo-${1549439602 + i}?auto=format&fit=crop&q=80&w=100`} className="w-full h-full object-cover" alt="" />
                         </div>
                         <div>
                           <p className="font-bold text-primary font-serif italic text-base">{item.name}</p>
@@ -499,24 +521,29 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="text-xs">
-                  {[...Array(6)].map((_, i) => (
-                    <tr key={i} className="border-b border-primary/5 hover:bg-accent-soft/10 transition-colors">
+                  {orders.slice(0, 6).map((order, i) => (
+                    <tr key={order.id} className="border-b border-primary/5 hover:bg-accent-soft/10 transition-colors">
                       <td className="px-10 py-6">
-                        <p className="font-bold text-primary font-serif italic text-base">#CMD-{2841 + i}</p>
-                        <p className="text-[10px] text-primary/40 font-bold tracking-widest uppercase">Il y a {i + 1} heures</p>
+                        <p className="font-bold text-primary font-serif italic text-base">#CMD-{order.id.slice(0,6)}</p>
+                        <p className="text-[10px] text-primary/40 font-bold tracking-widest uppercase">{new Date(order.created).toLocaleDateString()}</p>
                       </td>
                       <td className="px-10 py-6">
-                        <span className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${i === 0 ? 'bg-secondary/10 text-secondary' : 'bg-green-100 text-green-600'}`}>
-                          {i === 0 ? 'Traitement' : 'Livré'}
+                        <span className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${order.status !== 'delivered' ? 'bg-secondary/10 text-secondary' : 'bg-green-100 text-green-600'}`}>
+                          {order.status || 'Traitement'}
                         </span>
                       </td>
-                      <td className="px-10 py-6 font-bold text-primary/70 italic font-serif">Client Anonyme #{i + 10}</td>
-                      <td className="px-10 py-6 font-serif italic text-lg text-primary font-bold">{formatPrice(45000 + i * 2000)}</td>
+                      <td className="px-10 py-6 font-bold text-primary/70 italic font-serif">{order.customer_name || `Client Anonyme`}</td>
+                      <td className="px-10 py-6 font-serif italic text-lg text-primary font-bold">{formatPrice(order.total || 0)}</td>
                       <td className="px-10 py-6 text-right">
                         <button className="text-[10px] font-bold uppercase tracking-widest text-secondary hover:text-primary transition-colors italic font-serif">Voir Bon →</button>
                       </td>
                     </tr>
                   ))}
+                  {orders.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-10 py-6 text-center text-primary/40 italic font-serif">Aucune commande.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -575,30 +602,32 @@ export default function AdminDashboard() {
 
         {activeTab === 'affiliates' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {[1, 2, 3, 4].map((aff) => (
-              <div key={aff} className="bg-white p-10 rounded-[3rem] shadow-xl border border-primary/5 flex items-center gap-8 group hover:scale-[1.02] transition-all">
+                    {affiliates.length > 0 ? affiliates.map((aff) => (
+              <div key={aff.id} className="bg-white p-10 rounded-[3rem] shadow-xl border border-primary/5 flex items-center gap-8 group hover:scale-[1.02] transition-all">
                 <div className="w-24 h-24 bg-accent-soft rounded-[2rem] flex items-center justify-center text-3xl font-serif font-bold text-secondary italic shadow-inner">
-                  {aff === 1 ? 'A' : aff === 2 ? 'F' : aff === 3 ? 'S' : 'M'}
+                  {aff?.expand?.user?.email ? aff.expand.user.email[0].toUpperCase() : 'A'}
                 </div>
                 <div className="flex-grow">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="text-xl font-serif font-bold text-primary italic">Affilié #{aff * 7}</h4>
-                    <span className="text-[10px] font-bold bg-green-100 text-green-600 px-3 py-1 rounded-full uppercase tracking-widest">Actif</span>
+                    <h4 className="text-xl font-serif font-bold text-primary italic">Affilié: {aff?.expand?.user?.email || aff.id.slice(0,6)}</h4>
+                    <span className={`text-[10px] font-bold ${aff.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'} px-3 py-1 rounded-full uppercase tracking-widest`}>{aff.status || 'Actif'}</span>
                   </div>
-                  <p className="text-[10px] text-primary/40 font-bold uppercase tracking-widest mb-6">Code: SAMA-{aff}2026</p>
+                  <p className="text-[10px] text-primary/40 font-bold uppercase tracking-widest mb-6">Code: {aff.code}</p>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-accent-soft/30 p-4 rounded-2xl">
                       <p className="text-[8px] font-bold uppercase tracking-widest text-primary/40 mb-1">Ventes</p>
-                      <p className="text-lg font-serif font-bold text-primary italic">{aff * 3 + 2}</p>
+                      <p className="text-lg font-serif font-bold text-primary italic">{/* To handle real sales count we would need server side logic. Left statically for now */} 0</p>
                     </div>
                     <div className="bg-accent-soft/30 p-4 rounded-2xl">
                       <p className="text-[8px] font-bold uppercase tracking-widest text-primary/40 mb-1">Gain Total</p>
-                      <p className="text-lg font-serif font-bold text-secondary italic">{formatPrice(aff * 12500)}</p>
+                      <p className="text-lg font-serif font-bold text-secondary italic">{formatPrice(aff.balance || 0)}</p>
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+               <div className="col-span-1 md:col-span-2 text-center text-primary/40 padding-10 italic">Aucun affilié.</div>
+            )}
           </div>
         )}
 
@@ -610,20 +639,20 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                    <div className="space-y-4">
                       <p className="text-[10px] uppercase font-bold tracking-[0.4em] text-secondary">À Payer</p>
-                      <h4 className="text-4xl font-serif font-bold">{formatPrice(124500)}</h4>
+                      <h4 className="text-4xl font-serif font-bold">{formatPrice(affiliates.reduce((sum, a) => sum + (a.balance || 0), 0))}</h4>
                       <button className="w-full bg-secondary text-white py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-white hover:text-primary transition-all">Générer Paiements Wave</button>
                    </div>
                    <div className="space-y-4">
-                      <p className="text-[10px] uppercase font-bold tracking-[0.4em] text-white/40">Total Payé (2026)</p>
-                      <h4 className="text-4xl font-serif font-bold">{formatPrice(845000)}</h4>
+                      <p className="text-[10px] uppercase font-bold tracking-[0.4em] text-white/40">Total Payé (Général)</p>
+                      <h4 className="text-4xl font-serif font-bold">{formatPrice(0)}</h4>
                    </div>
                    <div className="space-y-4">
                       <p className="text-[10px] uppercase font-bold tracking-[0.4em] text-white/40">Affilié du Mois</p>
                       <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                         <div className="w-10 h-10 bg-secondary rounded-full" />
+                         <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-sm font-bold uppercase">{affiliates[0]?.expand?.user?.email?.[0] || '?'}</div>
                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest">Abdou Karim</p>
-                            <p className="text-[9px] text-white/40 italic">+12 ventes</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest truncate max-w-[100px]">{affiliates[0]?.expand?.user?.email || 'Aucun'}</p>
+                            <p className="text-[9px] text-white/40 italic">Balance: {formatPrice(affiliates[0]?.balance || 0)}</p>
                          </div>
                       </div>
                    </div>

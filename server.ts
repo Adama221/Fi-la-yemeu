@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { createServer as createViteServer } from 'vite';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -18,6 +19,14 @@ async function startServer() {
   const db = await initDb();
   const app = express();
   const PORT = 3000;
+
+  // Proxy requests to PocketBase
+  app.use('/api/pb', createProxyMiddleware({ 
+    target: 'http://127.0.0.1:8090', 
+    changeOrigin: true, 
+    pathRewrite: { '^/api/pb': '' },
+    ws: true
+  }));
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
