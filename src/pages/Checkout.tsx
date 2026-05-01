@@ -28,7 +28,7 @@ export default function Checkout() {
         total,
         method: payMethod,
         status: payMethod === 'orange' ? 'EFFECTUÉ' : 'VÉRIFICATION',
-      });
+      }, { $autoCancel: false });
       return data.id;
     } catch (error) {
       console.error('Error saving order:', error);

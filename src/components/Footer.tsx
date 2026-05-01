@@ -3,41 +3,44 @@ import { Instagram, Facebook, Twitter } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-primary/10 py-16">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-          <div className="col-span-1 md:col-span-2 px-4">
-            <h3 className="text-primary text-2xl font-serif font-bold uppercase tracking-tight mb-6">SAMA BUTIK <span className="text-secondary">HLM5</span></h3>
-            <p className="max-w-md leading-relaxed text-[13px] text-text-deep/60">
-              Votre destination mode africaine moderne. Qualité, élégance et tradition revisitées pour le monde d'aujourd'hui. 
-              Chaque vêtement raconte une histoire d'héritage d'Afrique de l'Ouest.
+    <footer className="bg-primary text-background-warm py-24 border-t-4 border-secondary">
+      <div className="container mx-auto px-6 lg:px-12">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-16 md:gap-8">
+          
+          <div className="col-span-1 md:col-span-5">
+            <h3 className="text-3xl font-serif text-white tracking-tighter uppercase mb-8">SAMA<span className="font-light italic ml-1">BUTIK</span></h3>
+            <p className="max-w-md leading-relaxed text-sm font-light text-white/70">
+              Maison de haute couture sénégalaise. 
+              <br/>L'alliance parfaite entre l'élégance contemporaine et l'héritage africain.
             </p>
           </div>
           
-          <div>
-            <h4 className="text-primary font-bold mb-6 text-[10px] uppercase tracking-[0.2em]">Navigation</h4>
-            <ul className="flex flex-col gap-3 text-[11px] uppercase tracking-widest font-medium">
-              <li><Link to="/" className="hover:text-secondary transition-colors opacity-70">Collections</Link></li>
-              <li><Link to="/products" className="hover:text-secondary transition-colors opacity-70">Nouveautés</Link></li>
-              <li><Link to="/checkout" className="hover:text-secondary transition-colors opacity-70">Paiement</Link></li>
+          <div className="col-span-1 md:col-span-3">
+            <h4 className="text-secondary font-serif italic mb-6 text-sm">Découvrir</h4>
+            <ul className="flex flex-col gap-4 text-[10px] uppercase tracking-[0.2em] font-semibold text-white/70">
+              <li><Link to="/" className="hover:text-secondary transition-colors">La Maison</Link></li>
+              <li><Link to="/products" className="hover:text-secondary transition-colors">Collections</Link></li>
+              <li><Link to="/login" className="hover:text-secondary transition-colors">Espace Privé</Link></li>
             </ul>
           </div>
 
-          <div>
-            <h4 className="text-primary font-bold mb-6 text-[10px] uppercase tracking-[0.2em]">Contact</h4>
-            <p className="text-[11px] uppercase tracking-widest mb-4 opacity-70 font-medium">+221 75 105 92 13</p>
+          <div className="col-span-1 md:col-span-4">
+            <h4 className="text-secondary font-serif italic mb-6 text-sm">Conciergerie</h4>
+            <p className="text-[10px] uppercase tracking-[0.2em] mb-4 text-white/70 font-semibold">+221 75 105 92 13</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] mb-8 text-white/70 font-semibold">contact@samabutik.sn</p>
+            
             <div className="flex gap-4">
-              <a href="#" className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center hover:bg-secondary hover:text-white transition-all"><Instagram className="w-4 h-4" /></a>
-              <a href="#" className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center hover:bg-secondary hover:text-white transition-all"><Facebook className="w-4 h-4" /></a>
+              <a href="#" className="w-10 h-10 border border-white/20 rounded-full flex items-center justify-center hover:bg-secondary hover:border-secondary transition-colors text-white/70 hover:text-white"><Instagram className="w-4 h-4" /></a>
+              <a href="#" className="w-10 h-10 border border-white/20 rounded-full flex items-center justify-center hover:bg-secondary hover:border-secondary transition-colors text-white/70 hover:text-white"><Facebook className="w-4 h-4" /></a>
             </div>
           </div>
         </div>
         
-        <div className="border-t border-primary/10 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[9px] uppercase tracking-[0.2em] font-bold text-primary/40">
-          <p>&copy; {new Date().getFullYear()} SAMA BUTIK. Dakar, Sénégal.</p>
+        <div className="border-t border-white/10 mt-20 pt-8 flex flex-col md:flex-row justify-between items-center gap-6 text-[9px] uppercase tracking-[0.3em] font-medium text-white/40">
+          <p>&copy; {new Date().getFullYear()} SAMA BUTIK. DAKAR, SÉNÉGAL.</p>
           <div className="flex gap-8">
-            <span>Livraison 2h</span>
-            <span className="text-secondary">#SamaButik221</span>
+            <Link to="/privacy" className="hover:text-white transition-colors">Mentions Légales</Link>
+            <Link to="/terms" className="hover:text-white transition-colors">CGV</Link>
           </div>
         </div>
       </div>

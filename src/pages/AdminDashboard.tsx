@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [branding, setBranding] = useState({ logo: '', primary_color: '#314227', secondary_color: '#D4A373', text: 'Bienvenue' });
   const [brandingFile, setBrandingFile] = useState<File | null>(null);
   const [paymentSettings, setPaymentSettings] = useState({
@@ -132,9 +133,9 @@ export default function AdminDashboard() {
       }
 
       if (record) {
-         await pb.collection('settings').update(record.id, formData);
+         await pb.collection('settings').update(record.id, formData, { $autoCancel: false });
       } else {
-         await pb.collection('settings').create(formData);
+         await pb.collection('settings').create(formData, { $autoCancel: false });
       }
       
       alert('Design modifié avec succès');
@@ -158,9 +159,9 @@ export default function AdminDashboard() {
       };
 
       if (record) {
-        await pb.collection('settings').update(record.id, data);
+        await pb.collection('settings').update(record.id, data, { $autoCancel: false });
       } else {
-        await pb.collection('settings').create(data);
+        await pb.collection('settings').create(data, { $autoCancel: false });
       }
 
       alert('Paramètres de paiement mis à jour');
@@ -170,34 +171,46 @@ export default function AdminDashboard() {
     }
   };
 
-  const [productImageFile, setProductImageFile] = useState<File | null>(null);
+  const [productImageFiles, setProductImageFiles] = useState<File[]>([]);
+  const [productCommission, setProductCommission] = useState('');
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAddingProduct) return;
+    setIsAddingProduct(true);
     try {
       const formData = new FormData();
       formData.append('name', productName);
       formData.append('price', String(productPrice));
       formData.append('description', productDescription);
       formData.append('category', productCategory);
+      if (productCommission) {
+        formData.append('commission', String(productCommission));
+      }
       
-      if (productImageFile) {
-        formData.append('image_file', productImageFile);
+      if (productImageFiles.length > 0) {
+        productImageFiles.forEach((file) => {
+          formData.append('image_file', file);
+        });
       } else if (productImage) {
         formData.append('image', productImage);
       }
 
-      await pb.collection('products').create(formData);
+      await pb.collection('products').create(formData, { $autoCancel: false });
 
       setIsAddProductOpen(false);
       alert('Produit ajouté avec succès!');
       setProductName('');
       setProductPrice('');
       setProductDescription('');
-      setProductImageFile(null);
+      setProductCommission('');
+      setProductImageFiles([]);
     } catch (error: any) {
       console.error(error);
-      alert("Erreur lors de l'ajout du produit: " + error.message);
+      const details = error.response ? JSON.stringify(error.response) : error.message;
+      alert("Erreur lors de l'ajout du produit: " + details);
+    } finally {
+      setIsAddingProduct(false);
     }
   };
 
@@ -464,8 +477,8 @@ export default function AdminDashboard() {
                   <tr className="text-[10px] font-bold uppercase tracking-widest text-primary/40 border-b border-primary/5">
                     <th className="px-10 py-6">Produit</th>
                     <th className="px-10 py-6">Catégorie</th>
-                    <th className="px-10 py-6">Stock</th>
                     <th className="px-10 py-6">Prix</th>
+                    <th className="px-10 py-6 text-center">Commission</th>
                     <th className="px-10 py-6 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -478,7 +491,7 @@ export default function AdminDashboard() {
                     <tr key={item.id} className="border-b border-primary/5 hover:bg-accent-soft/10 transition-colors">
                       <td className="px-10 py-6 flex items-center gap-4">
                         <div className="w-12 h-12 bg-accent-soft rounded-xl overflow-hidden shadow-sm">
-                          <img src={item.image_file ? pb.files.getURL(item, item.image_file) : item.image || `https://images.unsplash.com/photo-${1549439602 + i}?auto=format&fit=crop&q=80&w=100`} className="w-full h-full object-cover" alt="" />
+                          <img src={(Array.isArray(item.image_file) && item.image_file.length > 0) ? pb.files.getURL(item, item.image_file[0]) : (typeof item.image_file === 'string' && item.image_file) ? pb.files.getURL(item, item.image_file) : item.image || `https://images.unsplash.com/photo-${1549439602 + i}?auto=format&fit=crop&q=80&w=100`} className="w-full h-full object-cover" alt="" />
                         </div>
                         <div>
                           <p className="font-bold text-primary font-serif italic text-base">{item.name}</p>
@@ -488,7 +501,9 @@ export default function AdminDashboard() {
                       <td className="px-10 py-6">
                         <span className="uppercase text-[9px] font-bold tracking-widest text-primary/60">{item.category}</span>
                       </td>
-                      <td className="px-10 py-6 font-bold text-primary">En stock</td>
+                      <td className="px-10 py-6 text-center font-bold text-primary">
+                        {item.commission ? <span className="bg-secondary/10 text-secondary px-3 py-1 rounded-full">{item.commission}%</span> : <span className="text-primary/40">-</span>}
+                      </td>
                       <td className="px-10 py-6 font-serif italic text-lg text-secondary font-bold">{formatPrice(item.price)}</td>
                       <td className="px-10 py-6 text-right">
                         <div className="flex justify-end gap-2">
@@ -843,6 +858,10 @@ export default function AdminDashboard() {
                       <input type="number" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="65000" required value={productPrice} onChange={e => setProductPrice(e.target.value)}/>
                     </div>
                     <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Commission Affilié (%)</label>
+                      <input type="number" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="10" value={productCommission} onChange={e => setProductCommission(e.target.value)}/>
+                    </div>
+                    <div className="space-y-2 col-span-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Catégorie</label>
                       <select className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary appearance-none" value={productCategory} onChange={e => setProductCategory(e.target.value)}>
                         <option>Femme</option>
@@ -858,22 +877,29 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="space-y-4">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Visuel Produit (Image)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Visuels Produit (Jusqu'à 10 images)</label>
                     <input 
                       type="file" 
                       accept="image/*"
+                      multiple
                       className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans text-sm text-primary/80" 
                       onChange={e => {
                         if (e.target.files && e.target.files.length > 0) {
-                           setProductImageFile(e.target.files[0]);
+                           const filesArray = Array.from(e.target.files).slice(0, 10);
+                           setProductImageFiles(filesArray);
                         }
                       }} 
                     />
+                    {productImageFiles.length > 0 && (
+                      <p className="text-xs text-primary/60">{productImageFiles.length} image(s) sélectionnée(s)</p>
+                    )}
                   </div>
 
                   <div className="flex gap-4 pt-8 text-[10px] font-bold uppercase tracking-widest">
                     <button type="button" onClick={() => setIsAddProductOpen(false)} className="flex-grow py-5 border border-primary/10 rounded-full hover:bg-white transition-all text-primary/40">Annuler</button>
-                    <button type="submit" className="flex-grow py-5 bg-secondary text-white rounded-full hover:bg-primary transition-all shadow-lg shadow-secondary/20">Enregistrer</button>
+                    <button type="submit" disabled={isAddingProduct} className="flex-grow py-5 bg-secondary text-white rounded-full hover:bg-primary transition-all shadow-lg shadow-secondary/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                      {isAddingProduct ? 'Enregistrement...' : 'Enregistrer'}
+                    </button>
                   </div>
                 </form>
               </div>
