@@ -100,12 +100,19 @@ export async function initDb() {
   }
 
   // Insert Admin
-  const admin = await db.get('SELECT * FROM users WHERE username = ?', ['Pape']);
-  if (!admin) {
-    await db.run(
-      'INSERT INTO users (username, email, password, role, is_staff, is_superuser) VALUES (?, ?, ?, ?, ?, ?)',
-      ['Pape', 'papesamabutik@gmail.com', 'Pape221', 'admin', 1, 1]
-    );
+  const adminEmails = ['papesamabutik@gmail.com', '78177233ds@gmail.com'];
+  
+  for (const email of adminEmails) {
+    const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+    if (!user) {
+      const username = email.split('@')[0];
+      await db.run(
+        'INSERT INTO users (username, email, password, role, is_staff, is_superuser) VALUES (?, ?, ?, ?, ?, ?)',
+        [username, email, 'Pape221', 'admin', 1, 1]
+      );
+    } else if (user.role !== 'admin') {
+      await db.run('UPDATE users SET role = "admin", is_staff = 1, is_superuser = 1 WHERE email = ?', [email]);
+    }
   }
 
   // Insert Default Setting/Payment Config 
