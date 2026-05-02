@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { pb } from '../lib/pocketbase';
 
 interface SiteSettings {
   logo: string;
@@ -27,14 +26,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const records = await pb.collection('settings').getList(1, 1, {
-          filter: 'type="branding"'
-        });
-        
-        if (records.items && records.items.length > 0) {
-          const data = records.items[0];
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
           setSettings({
-            logo: data.logo_file ? pb.files.getURL(data, data.logo_file) : (data.logo || '/logo.png'),
+            logo: data.logo || '/logo.png',
             primaryColor: data.primary_color || '#314227',
             secondaryColor: data.secondary_color || '#D4A373',
             homepageText: data.homepage_text || 'Bienvenue'
@@ -48,23 +44,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     fetchSettings();
-
-    // Subscribe to realtime changes
-    pb.collection('settings').subscribe('*', function (e) {
-      if (e.action === 'update' && e.record.type === 'branding') {
-         const data = e.record;
-         setSettings({
-            logo: data.logo_file ? pb.files.getURL(data, data.logo_file) : (data.logo || '/logo.png'),
-            primaryColor: data.primary_color || '#314227',
-            secondaryColor: data.secondary_color || '#D4A373',
-            homepageText: data.homepage_text || 'Bienvenue'
-         });
-      }
-    });
-
-    return () => {
-      pb.collection('settings').unsubscribe('*');
-    };
   }, []);
 
   return (
@@ -83,3 +62,4 @@ export const useSettings = () => {
   }
   return context;
 };
+

@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Package, ShoppingCart, Users, BadgePercent, LogOut, ChevronRight, TrendingUp, DollarSign, PackageCheck, AlertCircle, Plus, Search, Filter, MoreVertical, X, Palette, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, BadgePercent, LogOut, ChevronRight, TrendingUp, DollarSign, PackageCheck, AlertCircle, Plus, Search, Filter, MoreVertical, X, Palette, CreditCard, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatPrice } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageUploader from '../components/ImageUploader';
-import { pb } from '../lib/pocketbase';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [branding, setBranding] = useState({ logo: '', primary_color: '#314227', secondary_color: '#D4A373', text: 'Bienvenue' });
   const [brandingFile, setBrandingFile] = useState<File | null>(null);
   const [paymentSettings, setPaymentSettings] = useState({
@@ -33,110 +33,114 @@ export default function AdminDashboard() {
 
   const [affiliates, setAffiliates] = useState<any[]>([]);
 
-  // Fetch settings, products, orders, affiliates on load
+  const [statsData, setStatsData] = useState({ products: 0, orders: 0, revenue: 0, commissions: 0 });
+
+  const fetchData = async () => {
+    const token = localStorage.getItem('auth_token');
+    const headers = { 'Authorization': `Bearer ${token}` };
+
+    if (isAdmin) {
+      // Fetch Dashboard Stats
+      try {
+        const dRes = await fetch('/api/admin/dashboard', { headers });
+        if (dRes.ok) {
+          const dData = await dRes.json();
+          setStatsData(dData);
+        }
+      } catch(e) {}
+
+      // Fetch Settings Branding
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          setBranding({
+             logo: data.logo || '',
+             primary_color: data.primary_color || '#314227',
+             secondary_color: data.secondary_color || '#D4A373',
+             text: data.homepage_text || 'Bienvenue'
+          });
+        }
+      } catch(e) {}
+
+      // Fetch Settings Payment
+      try {
+        const res = await fetch('/api/settings'); 
+        const paysData = await fetch('/api/admin/payment-links', { headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }});
+      } catch(e) {}
+
+      // Fetch Orders
+      try {
+        const ordRes = await fetch('/api/admin/orders', { headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }});
+        if (ordRes.ok) {
+          const data = await ordRes.json();
+          setOrders(data.orders || []);
+        }
+      } catch(e) {}
+
+      // Fetch Affiliates
+      try {
+        const affRes = await fetch('/api/admin/affiliates', { headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }});
+        if (affRes.ok) {
+          const data = await affRes.json();
+          setAffiliates(data.affiliates || []);
+        }
+      } catch(e) {}
+    }
+
+    // Fetch Products
+    try {
+      const prodRes = await fetch('/api/products');
+      if (prodRes.ok) {
+        const data = await prodRes.json();
+        setProducts(data.products || data.items || []);
+      }
+    } catch(e) {}
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      if (isAdmin) {
-        // Fetch Settings Branding
-        try {
-          const brands = await pb.collection('settings').getList(1, 1, { filter: 'type="branding"' });
-          if (brands.items.length > 0) {
-            const data = brands.items[0];
-            setBranding({
-               logo: data.logo || '',
-               primary_color: data.primary_color || '#314227',
-               secondary_color: data.secondary_color || '#D4A373',
-               text: data.homepage_text || 'Bienvenue'
-            });
-          }
-        } catch(e) {}
+    fetchData();
+  }, [isAdmin]);
 
-        // Fetch Settings Payment
-        try {
-          const pays = await pb.collection('settings').getList(1, 1, { filter: 'type="payment"' });
-          if (pays.items.length > 0) {
-            const data = pays.items[0];
-            setPaymentSettings({
-               wave_base_url: data.wave_base_url || '',
-               orange_api_url: data.orange_api_url || '',
-               orange_merchant_key: data.orange_merchant_key || '',
-               orange_token: data.orange_token || ''
-            });
-          }
-        } catch(e) {}
+  const handleDeleteProduct = async (id: string | number) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
 
-        // Fetch Orders
-        try {
-          const ords = await pb.collection('orders').getFullList({ sort: '-created' });
-          setOrders(ords);
-        } catch(e) {}
+    try {
+      const res = await fetch(`/api/admin/products/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      });
 
-        // Fetch Affiliates
-        try {
-          const affs = await pb.collection('affiliates').getFullList({ sort: '-created', expand: 'user' });
-          setAffiliates(affs);
-        } catch(e) {}
+      if (!res.ok) {
+         const text = await res.text();
+         throw new Error(`Erreur de suppression: ${res.status} ${text}`);
       }
 
-      // Fetch Products
-      try {
-        const prods = await pb.collection('products').getFullList({ sort: '-created' });
-        setProducts(prods);
-      } catch(e) {}
-    };
-
-    fetchData();
-
-    // Subscribe to real-time events
-    pb.collection('products').subscribe('*', function (e) {
-      if (e.action === 'create') setProducts(prev => [e.record, ...prev]);
-      if (e.action === 'update') setProducts(prev => prev.map(p => p.id === e.record.id ? e.record : p));
-      if (e.action === 'delete') setProducts(prev => prev.filter(p => p.id !== e.record.id));
-    });
-
-    pb.collection('orders').subscribe('*', function (e) {
-      if (e.action === 'create') setOrders(prev => [e.record, ...prev]);
-      if (e.action === 'update') setOrders(prev => prev.map(o => o.id === e.record.id ? e.record : o));
-      if (e.action === 'delete') setOrders(prev => prev.filter(o => o.id !== e.record.id));
-    });
-
-    pb.collection('affiliates').subscribe('*', function (e) {
-      if (e.action === 'create') setAffiliates(prev => [e.record, ...prev]);
-      if (e.action === 'update') setAffiliates(prev => prev.map(a => a.id === e.record.id ? e.record : a));
-      if (e.action === 'delete') setAffiliates(prev => prev.filter(a => a.id !== e.record.id));
-    });
-
-    return () => {
-      pb.collection('products').unsubscribe('*');
-      pb.collection('orders').unsubscribe('*');
-      pb.collection('affiliates').unsubscribe('*');
-    };
-  }, [isAdmin]);
+      await fetchData();
+    } catch (error: any) {
+      alert("Erreur: " + error.message);
+      console.error("Erreur: " + error.message);
+    }
+  };
 
   const handleUpdateDesign = async () => {
     try {
-      let record;
-      try {
-         const brands = await pb.collection('settings').getList(1, 1, { filter: 'type="branding"' });
-         if (brands.items.length > 0) record = brands.items[0];
-      } catch(e) {}
-
       const formData = new FormData();
-      formData.append('type', 'branding');
       formData.append('primary_color', branding.primary_color);
       formData.append('secondary_color', branding.secondary_color);
-      formData.append('homepage_text', branding.text);
+      formData.append('text', branding.text);
       if (brandingFile) {
-        formData.append('logo_file', brandingFile);
+        formData.append('logo', brandingFile);
       } else {
-        formData.append('logo', branding.logo);
+        formData.append('logo_url', branding.logo);
       }
 
-      if (record) {
-         await pb.collection('settings').update(record.id, formData, { $autoCancel: false });
-      } else {
-         await pb.collection('settings').create(formData, { $autoCancel: false });
-      }
+      const res = await fetch('/api/admin/design', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
+        body: formData
+      });
+      if (!res.ok) throw new Error("Erreur serveur");
       
       alert('Design modifié avec succès');
     } catch (e: any) {
@@ -147,22 +151,21 @@ export default function AdminDashboard() {
 
   const handleUpdatePayment = async () => {
     try {
-      let record;
-      try {
-         const req = await pb.collection('settings').getList(1, 1, { filter: 'type="payment"' });
-         if (req.items.length > 0) record = req.items[0];
-      } catch(e) {}
-
       const data = {
-         type: 'payment',
-         ...paymentSettings
+         wave: paymentSettings.wave_base_url,
+         orange: paymentSettings.orange_api_url
       };
 
-      if (record) {
-        await pb.collection('settings').update(record.id, data, { $autoCancel: false });
-      } else {
-        await pb.collection('settings').create(data, { $autoCancel: false });
-      }
+      const res = await fetch('/api/admin/payment-links', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!res.ok) throw new Error("Erreur serveur");
 
       alert('Paramètres de paiement mis à jour');
     } catch (e) {
@@ -190,28 +193,51 @@ export default function AdminDashboard() {
       
       if (productImageFiles.length > 0) {
         productImageFiles.forEach((file) => {
-          formData.append('image_file', file);
+          formData.append('image', file);
         });
       } else if (productImage) {
-        formData.append('image', productImage);
+        formData.append('image_url', productImage);
       }
 
-      await pb.collection('products').create(formData, { $autoCancel: false });
+      const url = editingProduct ? `/api/admin/products/${editingProduct.id}/update` : '/api/admin/products';
+      const method = 'POST'; // Update also uses POST with /update suffix in server.ts
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
+        body: formData
+      });
+      if (!res.ok) throw new Error("Erreur");
 
       setIsAddProductOpen(false);
-      alert('Produit ajouté avec succès!');
+      setEditingProduct(null);
+      alert(editingProduct ? 'Produit modifié!' : 'Produit ajouté!');
       setProductName('');
       setProductPrice('');
       setProductDescription('');
+      setProductCategory('');
       setProductCommission('');
+      setProductImage('');
       setProductImageFiles([]);
+      fetchData();
     } catch (error: any) {
       console.error(error);
       const details = error.response ? JSON.stringify(error.response) : error.message;
-      alert("Erreur lors de l'ajout du produit: " + details);
+      alert("Erreur: " + details);
     } finally {
       setIsAddingProduct(false);
     }
+  };
+
+  const openEditModal = (product: any) => {
+    setEditingProduct(product);
+    setProductName(product.name || '');
+    setProductPrice(product.price || '');
+    setProductDescription(product.description || '');
+    setProductCategory(product.category || '');
+    setProductCommission(product.commission || '');
+    setProductImage(product.image || '');
+    setIsAddProductOpen(true);
   };
 
   const handleLogout = async () => {
@@ -223,13 +249,11 @@ export default function AdminDashboard() {
     alert('Préparation de l\'exportation CSV... Le téléchargement commencera sous peu.');
   };
 
-  const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-  
   const stats = [
-    { title: 'Ventes Totales', value: formatPrice(totalSales), icon: <DollarSign className="w-5 h-5 text-green-500" />, trend: 'Global' },
-    { title: 'Commandes', value: orders.length.toString(), icon: <ShoppingCart className="w-5 h-5 text-blue-500" />, trend: 'Enregistré' },
+    { title: 'Ventes Totales', value: formatPrice(statsData.revenue), icon: <DollarSign className="w-5 h-5 text-green-500" />, trend: 'Global' },
+    { title: 'Commandes', value: statsData.orders.toString(), icon: <ShoppingCart className="w-5 h-5 text-blue-500" />, trend: 'Enregistré' },
     { title: 'Affiliés', value: affiliates.length.toString(), icon: <Users className="w-5 h-5 text-purple-500" />, trend: 'Inscrits' },
-    { title: 'Produits', value: products.length.toString(), icon: <Package className="w-5 h-5 text-orange-500" />, trend: 'Katalog' },
+    { title: 'Produits', value: statsData.products.toString(), icon: <Package className="w-5 h-5 text-orange-500" />, trend: 'Katalog' },
   ];
 
   return (
@@ -491,11 +515,11 @@ export default function AdminDashboard() {
                     <tr key={item.id} className="border-b border-primary/5 hover:bg-accent-soft/10 transition-colors">
                       <td className="px-10 py-6 flex items-center gap-4">
                         <div className="w-12 h-12 bg-accent-soft rounded-xl overflow-hidden shadow-sm">
-                          <img src={(Array.isArray(item.image_file) && item.image_file.length > 0) ? pb.files.getURL(item, item.image_file[0]) : (typeof item.image_file === 'string' && item.image_file) ? pb.files.getURL(item, item.image_file) : item.image || `https://images.unsplash.com/photo-${1549439602 + i}?auto=format&fit=crop&q=80&w=100`} className="w-full h-full object-cover" alt="" />
+                          <img src={item.image || `https://images.unsplash.com/photo-${1549439602 + i}?auto=format&fit=crop&q=80&w=100`} className="w-full h-full object-cover" alt="" />
                         </div>
                         <div>
                           <p className="font-bold text-primary font-serif italic text-base">{item.name}</p>
-                          <p className="text-[10px] text-primary/40 font-bold tracking-widest uppercase">ID: #{item.id.slice(0,8)}</p>
+                          <p className="text-[10px] text-primary/40 font-bold tracking-widest uppercase">ID: #{String(item.id).slice(0,8)}</p>
                         </div>
                       </td>
                       <td className="px-10 py-6">
@@ -507,7 +531,20 @@ export default function AdminDashboard() {
                       <td className="px-10 py-6 font-serif italic text-lg text-secondary font-bold">{formatPrice(item.price)}</td>
                       <td className="px-10 py-6 text-right">
                         <div className="flex justify-end gap-2">
-                          <button className="p-2 hover:bg-accent-soft rounded-full transition-colors text-primary/40"><MoreVertical className="w-5 h-5" /></button>
+                          <button 
+                            onClick={() => openEditModal(item)}
+                            className="p-3 bg-white border border-primary/5 hover:bg-secondary hover:text-white rounded-2xl transition-all duration-300 shadow-sm text-primary/60 group"
+                            title="Modifier"
+                          >
+                             <Palette className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteProduct(item.id)}
+                            className="p-3 bg-white border border-primary/5 hover:bg-red-500 hover:text-white rounded-2xl transition-all duration-300 shadow-sm text-red-400 group"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -521,54 +558,13 @@ export default function AdminDashboard() {
         {activeTab === 'orders' && (
           <div className="bg-white rounded-[3rem] shadow-2xl border border-primary/5 overflow-hidden">
             <div className="p-10 border-b border-primary/5 flex justify-between items-center bg-accent-soft/20">
-              <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary">Historique des Commandes</h4>
-              <button className="bg-white px-6 py-2 rounded-full border border-primary/5 text-[9px] font-bold uppercase tracking-widest hover:bg-secondary hover:text-white transition-all shadow-sm">Tout Actualiser</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="text-[10px] font-bold uppercase tracking-widest text-primary/40 border-b border-primary/5">
-                    <th className="px-10 py-6">Commande</th>
-                    <th className="px-10 py-6">Status</th>
-                    <th className="px-10 py-6">Client</th>
-                    <th className="px-10 py-6">Total</th>
-                    <th className="px-10 py-6 text-right">Détails</th>
-                  </tr>
-                </thead>
-                <tbody className="text-xs">
-                  {orders.slice(0, 6).map((order, i) => (
-                    <tr key={order.id} className="border-b border-primary/5 hover:bg-accent-soft/10 transition-colors">
-                      <td className="px-10 py-6">
-                        <p className="font-bold text-primary font-serif italic text-base">#CMD-{order.id.slice(0,6)}</p>
-                        <p className="text-[10px] text-primary/40 font-bold tracking-widest uppercase">{new Date(order.created).toLocaleDateString()}</p>
-                      </td>
-                      <td className="px-10 py-6">
-                        <span className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${order.status !== 'delivered' ? 'bg-secondary/10 text-secondary' : 'bg-green-100 text-green-600'}`}>
-                          {order.status || 'Traitement'}
-                        </span>
-                      </td>
-                      <td className="px-10 py-6 font-bold text-primary/70 italic font-serif">{order.customer_name || `Client Anonyme`}</td>
-                      <td className="px-10 py-6 font-serif italic text-lg text-primary font-bold">{formatPrice(order.total || 0)}</td>
-                      <td className="px-10 py-6 text-right">
-                        <button className="text-[10px] font-bold uppercase tracking-widest text-secondary hover:text-primary transition-colors italic font-serif">Voir Bon →</button>
-                      </td>
-                    </tr>
-                  ))}
-                  {orders.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-10 py-6 text-center text-primary/40 italic font-serif">Aucune commande.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'orders' && (
-          <div className="bg-white rounded-[3rem] shadow-2xl border border-primary/5 overflow-hidden">
-            <div className="p-10 border-b border-primary/5 flex justify-between items-center bg-accent-soft/20">
-              <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary">Toutes les Commandes</h4>
+              <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary">Gestion des Commandes</h4>
+              <button 
+                onClick={fetchData}
+                className="bg-white px-6 py-2 rounded-full border border-primary/5 text-[9px] font-bold uppercase tracking-widest hover:bg-secondary hover:text-white transition-all shadow-sm"
+              >
+                Actualiser
+              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -578,7 +574,7 @@ export default function AdminDashboard() {
                      <th className="px-10 py-6">Produits</th>
                      <th className="px-10 py-6">Status</th>
                      <th className="px-10 py-6">Montant</th>
-                     <th className="px-10 py-6">Date</th>
+                     <th className="px-10 py-6">Actions</th>
                    </tr>
                  </thead>
                  <tbody className="text-xs">
@@ -586,7 +582,8 @@ export default function AdminDashboard() {
                      <tr key={order.id} className="border-b border-primary/5 hover:bg-accent-soft/10 transition-colors">
                        <td className="px-10 py-6">
                           <p className="font-bold text-primary font-serif italic text-base">{order.customer?.prenom} {order.customer?.nom}</p>
-                          <p className="text-[10px] text-primary/40 font-bold tracking-widest uppercase">{order.customer?.adresse} - {order.customer?.telephone}</p>
+                          <p className="text-[10px] text-primary/40 font-bold tracking-widest uppercase">{order.customer?.adresse}</p>
+                          <p className="text-[9px] text-secondary font-bold">{order.customer?.telephone}</p>
                        </td>
                        <td className="px-10 py-6">
                           {order.items?.map((i: any) => (
@@ -594,13 +591,35 @@ export default function AdminDashboard() {
                           ))}
                        </td>
                        <td className="px-10 py-6">
-                          <span className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${order.status === 'VÉRIFICATION' ? 'bg-secondary/10 text-secondary' : 'bg-green-100 text-green-600'}`}>
-                            {order.status}
-                          </span>
+                          <select 
+                            value={order.status}
+                            onChange={async (e) => {
+                               const newStatus = e.target.value;
+                               try {
+                                 await fetch('/api/admin/orders/delivery', {
+                                   method: 'POST',
+                                   headers: { 
+                                     'Content-Type': 'application/json',
+                                     'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                                   },
+                                   body: JSON.stringify({ order_id: order.id, status: newStatus })
+                                 });
+                                 fetchData();
+                               } catch(err) { alert('Erreur'); }
+                            }}
+                            className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest outline-none border-none bg-accent-soft/30 cursor-pointer ${order.status === 'VÉRIFICATION' ? 'text-secondary' : order.status === 'Livré' ? 'text-green-600' : 'text-primary'}`}
+                          >
+                            <option value="VÉRIFICATION">VÉRIFICATION</option>
+                            <option value="Payé">Payé</option>
+                            <option value="Livré">Livré</option>
+                            <option value="Annulé">Annulé</option>
+                          </select>
                        </td>
                        <td className="px-10 py-6 font-serif italic text-lg text-primary font-bold">{formatPrice(order.total || 0)}</td>
-                       <td className="px-10 py-6 text-[10px] text-primary/60 uppercase font-bold tracking-widest">
-                          {new Date(order.created_at).toLocaleDateString()}
+                       <td className="px-10 py-6 text-right">
+                          <p className="text-[10px] text-primary/40 font-bold uppercase tracking-widest">
+                            {new Date(order.created_at || Date.now()).toLocaleDateString()}
+                          </p>
                        </td>
                      </tr>
                    ))}
@@ -624,7 +643,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex-grow">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="text-xl font-serif font-bold text-primary italic">Affilié: {aff?.expand?.user?.email || aff.id.slice(0,6)}</h4>
+                    <h4 className="text-xl font-serif font-bold text-primary italic">Affilié: {aff?.expand?.user?.email || String(aff.id).slice(0,6)}</h4>
                     <span className={`text-[10px] font-bold ${aff.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'} px-3 py-1 rounded-full uppercase tracking-widest`}>{aff.status || 'Actif'}</span>
                   </div>
                   <p className="text-[10px] text-primary/40 font-bold uppercase tracking-widest mb-6">Code: {aff.code}</p>
@@ -840,8 +859,8 @@ export default function AdminDashboard() {
             >
               <div className="p-12">
                 <div className="flex justify-between items-center mb-12">
-                  <h2 className="text-4xl font-serif font-bold text-primary italic">Nouveau Produit</h2>
-                  <button onClick={() => setIsAddProductOpen(false)} className="p-3 hover:bg-accent-soft rounded-full transition-colors text-primary">
+                  <h2 className="text-4xl font-serif font-bold text-primary italic">{editingProduct ? 'Modifier Produit' : 'Nouveau Produit'}</h2>
+                  <button onClick={() => { setIsAddProductOpen(false); setEditingProduct(null); }} className="p-3 hover:bg-accent-soft rounded-full transition-colors text-primary">
                     <X className="w-6 h-6" />
                   </button>
                 </div>

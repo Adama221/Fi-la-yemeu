@@ -5,8 +5,6 @@ import { Link } from 'react-router-dom';
 import { formatPrice } from '../lib/utils';
 import { useSettings } from '../contexts/SettingsContext';
 
-import { pb } from '../lib/pocketbase';
-
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
   const { settings } = useSettings();
@@ -14,24 +12,15 @@ export default function Home() {
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
-        const prodData = await pb.collection('products').getList(1, 4, { sort: '-created' });
-        setFeaturedProducts(prodData.items || []);
+        const response = await fetch('/api/products');
+        const data = await response.json();
+        setFeaturedProducts((data.products || data.items || []).slice(0, 4));
       } catch (error) {
         console.warn("Failed to fetch featured products", error);
       }
     };
 
     fetchFeatured();
-    
-    pb.collection('products').subscribe('*', function (e) {
-      if (e.action === 'create' || e.action === 'update' || e.action === 'delete') {
-         fetchFeatured();
-      }
-    });
-
-    return () => {
-      pb.collection('products').unsubscribe('*');
-    };
   }, []);
 
   return (
@@ -97,7 +86,7 @@ export default function Home() {
                 <Link to={`/product/${product.id}`} className="block">
                   <div className="relative aspect-[3/4] overflow-hidden bg-accent-soft mb-6">
                     <img 
-                      src={(Array.isArray(product.image_file) && product.image_file.length > 0) ? pb.files.getURL(product, product.image_file[0]) : (typeof product.image_file === 'string' && product.image_file) ? pb.files.getURL(product, product.image_file) : (product.image || `https://images.unsplash.com/photo-${i === 1 ? '1620755100705-d1297e685f0a' : i === 2 ? '1572804013307-f971ad9f7152' : '1523381210434-271e8be1f52b'}?auto=format&fit=crop&q=80&w=800`)}
+                      src={product.image || `https://images.unsplash.com/photo-${i === 1 ? '1620755100705-d1297e685f0a' : i === 2 ? '1572804013307-f971ad9f7152' : '1523381210434-271e8be1f52b'}?auto=format&fit=crop&q=80&w=800`}
                       alt={product.name}
                       className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                     />

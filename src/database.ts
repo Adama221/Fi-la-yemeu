@@ -24,7 +24,9 @@ export async function initDb() {
       name TEXT,
       price REAL,
       description TEXT,
-      image TEXT
+      image TEXT,
+      category TEXT,
+      commission REAL
     );
 
     CREATE TABLE IF NOT EXISTS payment_configs (
@@ -38,10 +40,15 @@ export async function initDb() {
       user_id INTEGER,
       product_id INTEGER,
       price REAL,
+      total REAL,
       status TEXT DEFAULT 'pending',
+      method TEXT,
       delivery_status TEXT DEFAULT 'not shipped',
       transaction_id TEXT,
       affiliate_code TEXT,
+      customer_json TEXT,
+      items_json TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users (id),
       FOREIGN KEY (product_id) REFERENCES products (id)
     );
@@ -73,6 +80,24 @@ export async function initDb() {
       homepage_text TEXT DEFAULT 'Bienvenue'
     );
   `);
+
+  // Safe table migrations for existing installs
+  try {
+    const productsInfo = await db.all("PRAGMA table_info(products)");
+    const productsCols = productsInfo.map(c => (c as any).name);
+    if (!productsCols.includes('category')) await db.run('ALTER TABLE products ADD COLUMN category TEXT');
+    if (!productsCols.includes('commission')) await db.run('ALTER TABLE products ADD COLUMN commission REAL');
+
+    const ordersInfo = await db.all("PRAGMA table_info(orders)");
+    const ordersCols = ordersInfo.map(c => (c as any).name);
+    if (!ordersCols.includes('total')) await db.run('ALTER TABLE orders ADD COLUMN total REAL');
+    if (!ordersCols.includes('method')) await db.run('ALTER TABLE orders ADD COLUMN method TEXT');
+    if (!ordersCols.includes('customer_json')) await db.run('ALTER TABLE orders ADD COLUMN customer_json TEXT');
+    if (!ordersCols.includes('items_json')) await db.run('ALTER TABLE orders ADD COLUMN items_json TEXT');
+    if (!ordersCols.includes('created_at')) await db.run('ALTER TABLE orders ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+  } catch (err) {
+    console.warn("Migration warning:", err);
+  }
 
   // Insert Admin
   const admin = await db.get('SELECT * FROM users WHERE username = ?', ['Pape']);

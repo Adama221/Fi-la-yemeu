@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Lock, Mail, ArrowRight, Chrome, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { pb } from '../lib/pocketbase';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Register() {
   const [loading, setLoading] = useState(false);
@@ -13,6 +13,7 @@ export default function Register() {
   const [role, setRole] = useState<'client' | 'affiliate'>('client');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,56 +27,36 @@ export default function Register() {
     }
 
     try {
-      // 1. Create user in PocketBase
-      await pb.collection('users').create({
-        username: email.split('@')[0] + Math.floor(Math.random() * 1000), // PB requires unique username
-        email,
-        emailVisibility: true,
-        password,
-        passwordConfirm,
-        name,
-        role,
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name, role })
       });
 
-      // 2. Automatically log them in after registration
-      await pb.collection('users').authWithPassword(email, password);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erreur lors de l\'inscription');
+      }
 
-      // 3. Redirect
+      const data = await res.json();
+      login(data.user, data.token);
+
       if (role === 'affiliate') {
-         navigate('/admin'); // Assuming affiliates go to the dashboard
+         navigate('/admin');
       } else {
          navigate('/');
       }
 
     } catch (err: any) {
       console.error(err);
-      if (err.status === 0) {
-         setError("Serveur hors ligne ou injoignable. Le backend PocketBase est-il démarré ?");
-      } else if (err.data && err.data.data) {
-         const msgs = Object.values(err.data.data).map((e: any) => e.message).join(' ');
-         setError("Erreur : " + msgs);
-      } else if (err.data && err.data.message) {
-         setError("Erreur : " + err.data.message);
-      } else {
-         setError("Erreur lors de l'inscription : " + err.message);
-      }
+      setError("Erreur : " + err.message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleAuth = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      await pb.collection('users').authWithOAuth2({ provider: 'google' });
-      navigate('/');
-    } catch (err: any) {
-      console.error(err);
-      setError('Erreur avec Google : ' + err.message);
-    } finally {
-      setLoading(false);
-    }
+    setError("La connexion Google n'est pas encore disponible.");
   };
 
   return (

@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, Chrome, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { pb } from '../lib/pocketbase';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { profile } = useAuth();
+  const { profile, login } = useAuth();
   const navigate = useNavigate();
 
   // Redirect based on role when profile is loaded
@@ -24,52 +23,28 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
 
-    // Mock Login for demo/offline since no Pocketbase server is running
-    if (email.trim().toLowerCase() === 'pape' && password === 'Pape221') {
-      pb.authStore.save('mock-token-pape', { 
-        id: 'mock-123', 
-        email: 'Pape', 
-        role: 'admin',
-        name: 'Pape',
-        collectionName: 'users'
-      } as any);
-      setLoading(false);
-      return;
-    }
-
     try {
-      await pb.collection('users').authWithPassword(email, password);
-    } catch (error: any) {
-      try {
-        await pb.collection('_superusers').authWithPassword(email, password);
-      } catch (err2: any) {
-        console.error(error);
-        if (error.status === 0) {
-           alert("Serveur hors ligne ou injoignable. Le backend PocketBase est-il démarré ?");
-        } else if (error.data && error.data.data) {
-           const msgs = Object.values(error.data.data).map((e: any) => e.message).join(' ');
-           alert("Erreur : " + msgs);
-        } else if (error.data && error.data.message) {
-           alert("Erreur : " + error.data.message);
-        } else {
-           alert("Erreur de connexion : " + error.message);
-        }
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: email, password })
+      });
+
+      if (!res.ok) {
+        throw new Error('Identifiants incorrects');
       }
+
+      const data = await res.json();
+      login(data.user, data.token);
+    } catch (error: any) {
+      alert("Erreur de connexion : " + error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      await pb.collection('users').authWithOAuth2({ provider: 'google' });
-    } catch (error: any) {
-      console.error(error);
-      alert('Erreur de connexion Google : ' + error.message);
-    } finally {
-      setLoading(false);
-    }
+    alert("La connexion Google n'est pas encore disponible.");
   };
 
 

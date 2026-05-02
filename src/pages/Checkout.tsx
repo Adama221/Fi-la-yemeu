@@ -3,7 +3,6 @@ import { CreditCard, Wallet, Smartphone, ShieldCheck, ArrowRight, CheckCircle2 }
 import { formatPrice } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../contexts/CartContext';
-import { pb } from '../lib/pocketbase';
 
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
@@ -22,13 +21,19 @@ export default function Checkout() {
 
   const createOrder = async (payMethod: string) => {
     try {
-      const data = await pb.collection('orders').create({
-        customer: customerInfo,
-        items,
-        total,
-        method: payMethod,
-        status: payMethod === 'orange' ? 'EFFECTUÉ' : 'VÉRIFICATION',
-      }, { $autoCancel: false });
+      const res = await fetch('/api/orders', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
+         body: JSON.stringify({
+            customer: customerInfo,
+            items,
+            total,
+            method: payMethod,
+            status: payMethod === 'orange' ? 'EFFECTUÉ' : 'VÉRIFICATION'
+         })
+      });
+      if (!res.ok) throw new Error("Could not create order");
+      const data = await res.json();
       return data.id;
     } catch (error) {
       console.error('Error saving order:', error);

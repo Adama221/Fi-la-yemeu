@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { formatPrice } from '../lib/utils';
 import { useCart } from '../contexts/CartContext';
 import { useState, useEffect } from 'react';
-import { pb } from '../lib/pocketbase';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -17,7 +16,9 @@ export default function ProductDetail() {
     const fetchProduct = async () => {
       try {
         if (!id) return;
-        const data = await pb.collection('products').getOne(id);
+        const response = await fetch(`/api/products/${id}`);
+        if (!response.ok) throw new Error('Not found');
+        const data = await response.json();
         setProduct(data);
       } catch (error) {
         console.error("Error fetching product:", error);
@@ -43,7 +44,7 @@ export default function ProductDetail() {
       name: product.name,
       price: Number(product.price),
       quantity: 1,
-      image: Array.isArray(product.image_file) && product.image_file.length > 0 ? pb.files.getURL(product, product.image_file[0]) : typeof product.image_file === 'string' && product.image_file ? pb.files.getURL(product, product.image_file) : product.image,
+      image: product.image,
       size: 'Unique'
     });
     alert('Création ajoutée au panier');
@@ -66,25 +67,12 @@ export default function ProductDetail() {
               className="aspect-[3/4] bg-accent-soft relative overflow-hidden"
             >
               <img 
-                src={(Array.isArray(product.image_file) && product.image_file.length > 0) ? pb.files.getURL(product, product.image_file[selectedImageIndex] || product.image_file[0]) : (typeof product.image_file === 'string' && product.image_file) ? pb.files.getURL(product, product.image_file) : product.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80&w=1200'} 
+                src={product.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80&w=1200'} 
                 alt={product.name} 
                 className="w-full h-full object-cover" 
               />
             </motion.div>
 
-            {Array.isArray(product.image_file) && product.image_file.length > 1 && (
-              <div className="grid grid-cols-4 gap-4">
-                {product.image_file.map((img: string, idx: number) => (
-                  <button 
-                    key={idx}
-                    onClick={() => setSelectedImageIndex(idx)}
-                    className={`aspect-square overflow-hidden bg-accent-soft border transition-all duration-300 ${selectedImageIndex === idx ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100 hover:border-primary/30'}`}
-                  >
-                    <img src={pb.files.getURL(product, img)} className="w-full h-full object-cover" alt="" />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Content */}

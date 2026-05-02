@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AuthModel } from 'pocketbase';
-import { pb } from '../lib/pocketbase';
 
 export type UserRole = 'admin' | 'affiliate' | 'client';
 
@@ -14,63 +12,75 @@ interface UserProfile {
 }
 
 interface AuthContextType {
-  user: AuthModel | null;
+  user: any | null;
   profile: UserProfile | null;
   loading: boolean;
   isAdmin: boolean;
   isAffiliate: boolean;
+  login: (userData: any, token: string) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthModel | null>(pb.authStore.model);
+  const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const handleAuthChange = () => {
-      const model = pb.authStore.model;
-      setUser(model);
-      if (model) {
-        // Map PB record to UserProfile
-        setProfile({
-          id: model.id,
-          email: model.email,
-          role: model.role || 'client',
-          full_name: model.full_name || model.name || '',
-          phone: model.phone || '',
-          created_at: model.created || ''
-        });
-      } else {
-        setProfile(null);
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem('auth_user') || 'null');
+        if (storedUser) {
+          setUser(storedUser);
+          setProfile({
+            id: storedUser.id,
+            email: storedUser.email,
+            role: storedUser.role || 'client',
+            full_name: storedUser.username || '',
+            phone: '',
+            created_at: ''
+          });
+        }
+      } catch (e) {
+        // empty
       }
-      setLoading(false);
-    };
-
-    // Initialize
-    handleAuthChange();
-
-    const unsubscribe = pb.authStore.onChange(handleAuthChange);
-
-    return () => {
-      unsubscribe();
-    };
+    }
+    setLoading(false);
   }, []);
 
-  const logout = () => {
-    pb.authStore.clear();
+  const login = (userData: any, token: string) => {
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('auth_user', JSON.stringify(userData));
+    setUser(userData);
+    setProfile({
+      id: userData.id,
+      email: userData.email,
+      role: userData.role || 'client',
+      full_name: userData.username || '',
+      phone: '',
+      created_at: ''
+    });
   };
 
-  const isAdminEmail = ['78177233ds@gmail.com', 'Papesamabutik@gmail.com'].includes(profile?.email || '');
+  const logout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    setUser(null);
+    setProfile(null);
+  };
+
+  const isAdminEmail = ['78177233ds@gmail.com', 'papesamabutik@gmail.com'].includes(profile?.email?.toLowerCase() || '');
 
   const value = {
     user,
     profile,
     loading,
-    isAdmin: profile?.role === 'admin' || isAdminEmail || user?.collectionName === '_superusers',
+    isAdmin: profile?.role === 'admin' || isAdminEmail,
     isAffiliate: profile?.role === 'affiliate',
+    login,
     logout
   };
 
@@ -88,3 +98,4 @@ export function useAuth() {
   }
   return context;
 }
+

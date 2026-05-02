@@ -3,7 +3,6 @@ import { Search, SlidersHorizontal, ShoppingBag } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatPrice } from '../lib/utils';
 import { Link } from 'react-router-dom';
-import { pb } from '../lib/pocketbase';
 import { useCart } from '../contexts/CartContext';
 
 export default function Products() {
@@ -17,8 +16,9 @@ export default function Products() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const prodData = await pb.collection('products').getFullList({ sort: '-created' });
-        setProducts(prodData || []);
+        const response = await fetch('/api/products');
+        const data = await response.json();
+        setProducts(data.products || data.items || []);
       } catch (error) {
         console.warn("Failed to fetch products", error);
       } finally {
@@ -27,16 +27,6 @@ export default function Products() {
     };
 
     fetchProducts();
-
-    pb.collection('products').subscribe('*', function (e) {
-      if (e.action === 'create') setProducts(prev => [e.record, ...prev]);
-      if (e.action === 'update') setProducts(prev => prev.map(p => p.id === e.record.id ? e.record : p));
-      if (e.action === 'delete') setProducts(prev => prev.filter(p => p.id !== e.record.id));
-    });
-
-    return () => {
-      pb.collection('products').unsubscribe('*');
-    };
   }, []);
 
 
@@ -53,7 +43,7 @@ export default function Products() {
       name: product.name,
       price: Number(product.price),
       quantity: 1,
-      image: Array.isArray(product.image_file) && product.image_file.length > 0 ? pb.files.getURL(product, product.image_file[0]) : typeof product.image_file === 'string' && product.image_file ? pb.files.getURL(product, product.image_file) : product.image || '',
+      image: product.image || '',
       size: 'Unique'
     });
     alert('Produit ajouté au panier !');
@@ -139,7 +129,7 @@ export default function Products() {
                   >
                     <Link to={`/product/${product.id}`} className="block mb-6 relative overflow-hidden aspect-[3/4] bg-accent-soft">
                       <img 
-                        src={(Array.isArray(product.image_file) && product.image_file.length > 0) ? pb.files.getURL(product, product.image_file[0]) : (typeof product.image_file === 'string' && product.image_file) ? pb.files.getURL(product, product.image_file) : (product.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80')} 
+                        src={product.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80'} 
                         alt={product.name}
                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                       />
