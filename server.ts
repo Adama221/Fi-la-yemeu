@@ -95,26 +95,24 @@ async function startServer() {
     try {
       if (token === 'mock-token-pape') {
          user = { role: 'admin', email: 'pape@samabutik.com' };
-      } else if (token.startsWith('eyJ')) {
+      } else if (token.startsWith('eyJ') && token.split('.').length === 3) {
          // Supabase token - Decode payload
          const parts = token.split('.');
-         if (parts.length === 3) {
-            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-            const email = payload.email;
-            
-            // Whitelist check
-            const adminEmails = ['78177233ds@gmail.com', 'papesamabutik@gmail.com', 'pape@samabutik.com'];
-            if (email && adminEmails.includes(email.toLowerCase())) {
-               user = { role: 'admin', email };
-            } else if (email) {
-               // Check local DB for role
-               const dbUser = await db.get('SELECT role FROM users WHERE email = ?', [email]);
-               if (dbUser) {
-                  user = { role: dbUser.role, email };
-               } else {
-                  // Fallback: check if role is in user_metadata
-                  user = { role: payload.user_metadata?.role || 'client', email };
-               }
+         const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+         const email = payload.email;
+         
+         // Whitelist check
+         const adminEmails = ['78177233ds@gmail.com', 'papesamabutik@gmail.com', 'pape@samabutik.com'];
+         if (email && adminEmails.includes(email.toLowerCase())) {
+            user = { role: 'admin', email };
+         } else if (email) {
+            // Check local DB for role
+            const dbUser = await db.get('SELECT role FROM users WHERE email = ?', [email]);
+            if (dbUser) {
+               user = { role: dbUser.role, email };
+            } else {
+               // Fallback: check if role is in user_metadata
+               user = { role: payload.user_metadata?.role || 'client', email };
             }
          }
       } else {
