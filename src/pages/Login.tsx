@@ -50,7 +50,7 @@ export default function Login() {
       const res = await fetch('/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: '78177233ds@gmail.com' }) // Auto-selecting user's email for convenience
+        body: JSON.stringify({ email: 'pape@samabutik.com' }) // Pre-selecting new admin email
       });
 
       if (!res.ok) throw new Error('Simulation failed');

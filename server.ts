@@ -40,12 +40,12 @@ async function startServer() {
   app.post('/api/auth/google', async (req, res) => {
     const { email } = req.body;
     // For demo purposes, we allow auto-login for the specific admin emails
-    const targetEmail = email || '78177233ds@gmail.com';
+    const targetEmail = email || 'pape@samabutik.com';
     let user = await db.get('SELECT * FROM users WHERE email = ?', [targetEmail]);
     
     if (!user) {
        // Create it if not exists (Mock)
-       const adminEmails = ['papesamabutik@gmail.com', '78177233ds@gmail.com'];
+       const adminEmails = ['papesamabutik@gmail.com', '78177233ds@gmail.com', 'pape@samabutik.com'];
        const role = adminEmails.includes(targetEmail.toLowerCase()) ? 'admin' : 'client';
        await db.run(
          'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
@@ -75,7 +75,7 @@ async function startServer() {
 
   app.post('/api/register', async (req, res) => {
     const { username, email, password, name, role } = req.body;
-    const adminEmails = ['papesamabutik@gmail.com', '78177233ds@gmail.com'];
+    const adminEmails = ['papesamabutik@gmail.com', '78177233ds@gmail.com', 'pape@samabutik.com'];
     const assignedRole = adminEmails.includes(email?.toLowerCase()) ? 'admin' : (role || 'client');
     
     try {

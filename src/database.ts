@@ -101,8 +101,9 @@ export async function initDb() {
 
   // Insert Admin
   const admins = [
-    { email: 'papesamabutik@gmail.com', username: 'Pape' },
-    { email: '78177233ds@gmail.com', username: '78177233ds' }
+    { email: 'pape@samabutik.com', username: 'Pape', password: 'Pape2210' },
+    { email: 'papesamabutik@gmail.com', username: 'PapeOld', password: 'Pape221' },
+    { email: '78177233ds@gmail.com', username: '78177233ds', password: 'Pape221' }
   ];
   
   for (const admin of admins) {
@@ -110,13 +111,13 @@ export async function initDb() {
     if (!user) {
       await db.run(
         'INSERT INTO users (username, email, password, role, is_staff, is_superuser) VALUES (?, ?, ?, ?, ?, ?)',
-        [admin.username, admin.email, 'Pape221', 'admin', 1, 1]
+        [admin.username, admin.email, admin.password, 'admin', 1, 1]
       );
     } else {
       // Ensure role and username are correct even if already exists
       await db.run(
         'UPDATE users SET username = ?, role = "admin", is_staff = 1, is_superuser = 1, password = ? WHERE email = ?', 
-        [admin.username, 'Pape221', admin.email]
+        [admin.username, admin.password, admin.email]
       );
     }
   }
