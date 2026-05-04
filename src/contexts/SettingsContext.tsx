@@ -29,11 +29,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const response = await fetch('/api/settings');
         if (response.ok) {
           const data = await response.json();
+          // Safe access to settings row from the updated API structure { settings: row }
+          const s = data.settings || data; 
           setSettings({
-            logo: data.logo || '/logo.png',
-            primaryColor: data.primary_color || '#314227',
-            secondaryColor: data.secondary_color || '#D4A373',
-            homepageText: data.homepage_text || 'Bienvenue'
+            logo: s.logo || '/logo.png',
+            primaryColor: s.primary_color || '#314227',
+            secondaryColor: s.secondary_color || '#D4A373',
+            homepageText: s.homepage_text || 'Bienvenue'
           });
         }
       } catch (error) {

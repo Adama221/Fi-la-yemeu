@@ -49,25 +49,32 @@ export default function AdminDashboard() {
         }
       } catch(e) {}
 
-      // Fetch Settings Branding
+      // Fetch Settings Branding & Payment
       try {
         const res = await fetch('/api/settings');
         if (res.ok) {
           const data = await res.json();
+          const s = data.settings || data;
           setBranding({
-             logo: data.logo || '',
-             primary_color: data.primary_color || '#314227',
-             secondary_color: data.secondary_color || '#D4A373',
-             text: data.homepage_text || 'Bienvenue'
+             logo: s.logo || '',
+             primary_color: s.primary_color || '#314227',
+             secondary_color: s.secondary_color || '#D4A373',
+             text: s.homepage_text || 'Bienvenue'
           });
         }
-      } catch(e) {}
-
-      // Fetch Settings Payment
-      try {
-        const res = await fetch('/api/settings'); 
-        const paysData = await fetch('/api/admin/payment-links', { headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }});
-      } catch(e) {}
+        
+        const paysRes = await fetch('/api/admin/payment-links', { headers });
+        if (paysRes.ok) {
+           const paysData = await paysRes.json();
+           setPaymentSettings(prev => ({
+             ...prev,
+             wave_base_url: paysData.wave_link || '',
+             orange_api_url: paysData.orange_link || ''
+           }));
+        }
+      } catch(e) {
+        console.warn('Dashboard fetch settings error:', e);
+      }
 
       // Fetch Orders
       try {
@@ -338,8 +345,8 @@ export default function AdminDashboard() {
         <header className="flex justify-between items-end mb-16">
            <div className="space-y-4">
               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-white text-md font-bold font-serif italic">P</div>
-                 <p className="text-[10px] text-primary font-bold uppercase tracking-[0.4em]">Bienvenue, Pape</p>
+                 <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-white text-md font-bold font-serif italic">{profile?.full_name?.[0] || 'U'}</div>
+                 <p className="text-[10px] text-primary font-bold uppercase tracking-[0.4em]">Bienvenue, {profile?.full_name || 'Utilisateur'}</p>
               </div>
               <h1 className="text-6xl font-serif font-bold uppercase tracking-tight text-primary italic">
                 {activeTab === 'dashboard' ? 'Vue d\'ensemble' : activeTab === 'payments' ? 'Paiements' : activeTab === 'branding' ? 'Design' : activeTab}
@@ -639,11 +646,11 @@ export default function AdminDashboard() {
                     {affiliates.length > 0 ? affiliates.map((aff) => (
               <div key={aff.id} className="bg-white p-10 rounded-[3rem] shadow-xl border border-primary/5 flex items-center gap-8 group hover:scale-[1.02] transition-all">
                 <div className="w-24 h-24 bg-accent-soft rounded-[2rem] flex items-center justify-center text-3xl font-serif font-bold text-secondary italic shadow-inner">
-                  {aff?.expand?.user?.email ? aff.expand.user.email[0].toUpperCase() : 'A'}
+                  {aff?.email ? aff.email[0].toUpperCase() : 'A'}
                 </div>
                 <div className="flex-grow">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="text-xl font-serif font-bold text-primary italic">Affilié: {aff?.expand?.user?.email || String(aff.id).slice(0,6)}</h4>
+                    <h4 className="text-xl font-serif font-bold text-primary italic">Affilié: {aff?.email || String(aff.id).slice(0,6)}</h4>
                     <span className={`text-[10px] font-bold ${aff.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'} px-3 py-1 rounded-full uppercase tracking-widest`}>{aff.status || 'Actif'}</span>
                   </div>
                   <p className="text-[10px] text-primary/40 font-bold uppercase tracking-widest mb-6">Code: {aff.code}</p>
@@ -683,9 +690,9 @@ export default function AdminDashboard() {
                    <div className="space-y-4">
                       <p className="text-[10px] uppercase font-bold tracking-[0.4em] text-white/40">Affilié du Mois</p>
                       <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                         <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-sm font-bold uppercase">{affiliates[0]?.expand?.user?.email?.[0] || '?'}</div>
+                         <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-sm font-bold uppercase">{affiliates[0]?.email?.[0] || '?'}</div>
                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest truncate max-w-[100px]">{affiliates[0]?.expand?.user?.email || 'Aucun'}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest truncate max-w-[100px]">{affiliates[0]?.email || 'Aucun'}</p>
                             <p className="text-[9px] text-white/40 italic">Balance: {formatPrice(affiliates[0]?.balance || 0)}</p>
                          </div>
                       </div>

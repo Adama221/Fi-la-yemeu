@@ -1,6 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { createServer as createViteServer } from 'vite';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -19,14 +18,6 @@ async function startServer() {
   const db = await initDb();
   const app = express();
   const PORT = 3000;
-
-  // Proxy requests to PocketBase
-  app.use('/api/pb', createProxyMiddleware({ 
-    target: 'http://127.0.0.1:8090', 
-    changeOrigin: true, 
-    pathRewrite: { '^/api/pb': '' },
-    ws: true
-  }));
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -97,33 +88,54 @@ async function startServer() {
       console.log('AdminRequired: No token provided');
       return res.status(401).json({ error: "login required" });
     }
-
+ 
     const token = authHeader.split(' ')[1];
-    let user;
-
+    let user: any = null;
+ 
     try {
       if (token === 'mock-token-pape') {
-         user = { role: 'admin' };
+         user = { role: 'admin', email: 'pape@samabutik.com' };
+      } else if (token.startsWith('eyJ')) {
+         // Supabase token - Decode payload
+         const parts = token.split('.');
+         if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+            const email = payload.email;
+            
+            // Whitelist check
+            const adminEmails = ['78177233ds@gmail.com', 'papesamabutik@gmail.com', 'pape@samabutik.com'];
+            if (email && adminEmails.includes(email.toLowerCase())) {
+               user = { role: 'admin', email };
+            } else if (email) {
+               // Check local DB for role
+               const dbUser = await db.get('SELECT role FROM users WHERE email = ?', [email]);
+               if (dbUser) {
+                  user = { role: dbUser.role, email };
+               } else {
+                  // Fallback: check if role is in user_metadata
+                  user = { role: payload.user_metadata?.role || 'client', email };
+               }
+            }
+         }
       } else {
          const decoded = Buffer.from(token, 'base64').toString('utf8');
          user = JSON.parse(decoded);
       }
     } catch(e) {
-      console.log('AdminRequired: Token decode fail, checking map or fallback');
-      user = userTokens.get(token);
+      console.log('AdminRequired: Token decode fail', e);
     }
-
+ 
     if (!user) {
        console.log('AdminRequired: User not found for token:', token);
        // Last resort fallback for development environment consistency
        user = { role: 'admin' }; 
     }
-
+ 
     if (user.role !== "admin") {
       console.log('AdminRequired: User is not admin:', user);
       return res.status(403).json({ error: "forbidden" });
     }
-
+ 
     (req as any).user = user;
     next();
   };
@@ -206,6 +218,11 @@ async function startServer() {
   });
 
   // ====================== PAYMENT CONFIG ======================
+  app.get('/api/admin/payment-links', adminRequired, async (req, res) => {
+    const config = await db.get('SELECT * FROM payment_configs WHERE id = 1');
+    res.json(config || { wave_link: '', orange_link: '' });
+  });
+
   app.post('/api/admin/payment-links', adminRequired, async (req, res) => {
     const { wave, orange } = req.body;
     await db.run('UPDATE payment_configs SET wave_link = ?, orange_link = ? WHERE id = 1', [wave, orange]);
@@ -260,6 +277,15 @@ async function startServer() {
     res.json({ message: "Paiement validé" });
   });
 
+  app.post('/api/pay/orange', async (req, res) => {
+    const { amount, orderId } = req.body;
+    // Mock Orange Money payment URL generation
+    res.json({ 
+      payment_url: `/success?orderId=${orderId}&amount=${amount}&method=orange`,
+      msg: "Mock orange payment initiated" 
+    });
+  });
+
   app.post('/api/webhook/orange', async (req, res) => {
     const data = req.body;
     const order_id = data.order_id;
@@ -277,8 +303,17 @@ async function startServer() {
 
   // ====================== COMMISSIONS / AFFILIATES ======================
   app.get('/api/admin/affiliates', adminRequired, async (req, res) => {
-    const affiliates = await db.all('SELECT * FROM affiliates');
-    res.json({ affiliates: affiliates || [] });
+    try {
+      const affiliates = await db.all(`
+        SELECT a.*, u.email 
+        FROM affiliates a 
+        JOIN users u ON a.user_id = u.id
+      `);
+      res.json({ affiliates: affiliates || [] });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   app.get('/api/admin/commissions', adminRequired, async (req, res) => {
@@ -287,11 +322,6 @@ async function startServer() {
   });
 
   // ====================== DESIGN ======================
-  app.get('/api/settings', async (req, res) => {
-    const sConf = await db.get('SELECT * FROM site_settings WHERE id = 1');
-    res.json(sConf || {});
-  });
-
   app.post('/api/admin/design', adminRequired, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), async (req, res) => {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     let updates: string[] = [];

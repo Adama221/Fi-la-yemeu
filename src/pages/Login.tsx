@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, Chrome, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -14,8 +15,12 @@ export default function Login() {
   // Redirect based on role when profile is loaded
   useEffect(() => {
     if (profile) {
-      if (profile.role === 'admin') navigate('/admin');
-      else navigate('/');
+      console.log('User profile loaded:', profile);
+      if (profile.role === 'admin' || profile.role === 'affiliate') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
     }
   }, [profile, navigate]);
 
@@ -24,18 +29,28 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identity: email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
       });
 
-      if (!res.ok) {
-        throw new Error('Identifiants incorrects');
-      }
+      if (error) {
+        // Fallback to local server login if Supabase auth fails (might be using local sqlite users)
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identity: email, password })
+        });
 
-      const data = await res.json();
-      login(data.user, data.token);
+        if (!res.ok) {
+           const errData = await res.json();
+           throw new Error(errData.error || 'Identifiants incorrects');
+        }
+        const localData = await res.json();
+        await login(localData.user, localData.token);
+      } else {
+        await login(data.user, data.session?.access_token || '');
+      }
     } catch (error: any) {
       alert("Erreur de connexion : " + error.message);
     } finally {
@@ -46,20 +61,15 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      // Simulation of Google Login for the demo/dev environment
-      const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'pape@samabutik.com' }) // Pre-selecting new admin email
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
       });
-
-      if (!res.ok) throw new Error('Simulation failed');
-
-      const data = await res.json();
-      login(data.user, data.token);
-      navigate('/admin');
+      if (error) throw error;
     } catch (error: any) {
-      alert("Erreur simulation Google : " + error.message);
+      alert("Erreur Google Auth : " + error.message);
     } finally {
       setLoading(false);
     }
@@ -71,46 +81,49 @@ export default function Login() {
       <motion.div 
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white p-10 rounded-[3rem] shadow-2xl border border-primary/5 relative overflow-hidden"
+        className="max-w-md w-full bg-white/90 backdrop-blur-xl p-10 rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] border border-primary/10 relative overflow-hidden"
       >
-        <div className="absolute top-0 left-0 w-full h-2 bg-primary" />
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-secondary" />
         
-        <div className="text-center mb-8">
-            <h1 className="text-3xl font-serif font-bold uppercase tracking-tight text-primary mb-1">Connexion</h1>
-            <p className="text-[10px] text-text-deep/40 uppercase tracking-[0.4em] font-bold">SAMA BUTIK HLM5</p>
+        <div className="text-center mb-10">
+            <h1 className="text-4xl font-serif font-bold uppercase tracking-tight text-primary mb-2 italic">Connexion</h1>
+            <p className="text-[10px] text-text-deep/30 uppercase tracking-[0.5em] font-bold">L'Excellence Sama Butik</p>
         </div>
 
-        <form onSubmit={handleEmailLogin} className="space-y-4 mb-8">
+        <form onSubmit={handleEmailLogin} className="space-y-6 mb-8" id="login-form">
           <div className="relative group">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-deep/30 group-focus-within:text-primary transition-colors" />
+            <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/30 group-focus-within:text-secondary transition-colors" />
             <input 
+              id="email-input"
               type="text" 
-              placeholder="Email / Nom d'utilisateur" 
+              placeholder="Email professionnel" 
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-stone-50 border border-stone-100 py-4 px-12 rounded-2xl text-sm tracking-wide focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white transition-all"
+              className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium uppercase placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
             />
           </div>
 
           <div className="relative group">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-deep/30 group-focus-within:text-primary transition-colors" />
+            <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/30 group-focus-within:text-secondary transition-colors" />
             <input 
+              id="password-input"
               type="password" 
               placeholder="Mot de passe" 
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-stone-50 border border-stone-100 py-4 px-12 rounded-2xl text-sm tracking-wide focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white transition-all"
+              className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium uppercase placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
             />
           </div>
 
           <button 
+            id="login-submit-btn"
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-white py-5 rounded-2xl text-[11px] font-bold uppercase tracking-[0.3em] flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
+            className="w-full bg-primary text-background-warm py-5 rounded-2xl text-[10px] font-bold uppercase tracking-[0.4em] flex items-center justify-center gap-3 hover:bg-secondary hover:text-white transition-all duration-500 shadow-xl shadow-primary/10 disabled:opacity-50 group"
           >
-            Se Connecter <ArrowRight className="w-3 h-3" />
+            Se Connecter <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
           </button>
         </form>
 

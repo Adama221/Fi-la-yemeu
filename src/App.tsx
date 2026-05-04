@@ -33,8 +33,8 @@ export default function App() {
         <CartProvider>
           <div className="min-h-screen flex flex-col font-sans transition-colors duration-500" style={{ backgroundColor: 'var(--bg-warm)' }}>
             <Header />
-          <main className="flex-grow">
-            <Routes>
+            <main className="flex-grow">
+              <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/products" element={<Products />} />
               <Route path="/product/:id" element={<ProductDetail />} />

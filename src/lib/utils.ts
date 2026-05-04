@@ -10,10 +10,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(amount: number) {
+export function formatPrice(amount: number | string | undefined | null) {
+  const value = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (value === undefined || value === null || isNaN(value as number)) return '0 F';
+  
   return new Intl.NumberFormat('fr-SN', {
     style: 'currency',
     currency: 'XOF',
     minimumFractionDigits: 0
-  }).format(amount);
+  }).format(value as number);
 }
