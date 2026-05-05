@@ -90,7 +90,12 @@ export default function Home() {
                       alt={product.name}
                       className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                     />
-                    {i === 0 && (
+                    {product.stock !== undefined && product.stock <= 0 && (
+                       <div className="absolute top-0 left-0 w-full h-full bg-primary/20 backdrop-blur-[2px] flex items-center justify-center">
+                          <span className="bg-white/90 text-primary px-6 py-2 text-[10px] uppercase font-bold tracking-[0.2em] shadow-xl">Épuisé</span>
+                       </div>
+                    )}
+                    {i === 0 && product.stock > 0 && (
                        <div className="absolute top-4 right-4 bg-primary text-background-warm px-3 py-1 text-[9px] uppercase tracking-widest font-bold">
                          Avant-première
                        </div>

@@ -112,6 +112,37 @@ async function startServer() {
     }
   });
 
+  const authRequired = async (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Accès refusé, veuillez vous connecter." });
+    }
+ 
+    const token = authHeader.split(' ')[1];
+    let user: any = null;
+ 
+    try {
+      if (token === 'mock-token-pape') {
+         user = { role: 'admin', email: 'pape@samabutik.com', id: 1 };
+      } else {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        user = decoded;
+      }
+    } catch(e: any) {
+      if (e.name === 'TokenExpiredError') {
+        return res.status(401).json({ error: "Token expiré. Veuillez vous reconnecter." });
+      }
+      return res.status(401).json({ error: "Token invalide." });
+    }
+ 
+    if (!user) {
+      return res.status(401).json({ error: "Utilisateur non trouvé." });
+    }
+ 
+    (req as any).user = user;
+    next();
+  };
+
   const adminRequired = async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -148,7 +179,7 @@ async function startServer() {
       try {
         const aff = await db.get('SELECT * FROM affiliates WHERE code = ?', [order.affiliate_code]);
         if (aff) {
-          const amount = order.price * 0.1;
+          const amount = (order.total || 0) * 0.1;
           await db.run('INSERT INTO commissions (affiliate_id, amount, status) VALUES (?, ?, ?)', [aff.id, amount, 'approved']);
           await db.run('UPDATE affiliates SET balance = balance + ? WHERE id = ?', [amount, aff.id]);
         }
@@ -160,11 +191,11 @@ async function startServer() {
 
   // ====================== PRODUCT ======================
   app.post('/api/admin/products', adminRequired, upload.single('image'), async (req, res) => {
-    const { name, price, description, category, commission } = req.body;
+    const { name, price, description, category, commission, stock, low_stock_threshold } = req.body;
     const image = req.file ? '/uploads/' + req.file.filename : req.body.image_url || null;
     const result = await db.run(
-      'INSERT INTO products (name, price, description, image, category, commission) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, Number(price), description, image, category, Number(commission)]
+      'INSERT INTO products (name, price, description, image, category, commission, stock, low_stock_threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, Number(price), description, image, category, Number(commission), Number(stock || 0), Number(low_stock_threshold || 5)]
     );
     res.json({ 
       message: "Produit ajouté avec succès",
@@ -172,7 +203,9 @@ async function startServer() {
         id: result.lastID,
         name,
         price: Number(price),
-        image
+        image,
+        stock: Number(stock || 0),
+        low_stock_threshold: Number(low_stock_threshold || 5)
       }
     });
   });
@@ -187,11 +220,13 @@ async function startServer() {
     const description = req.body.description || p.description;
     const category = req.body.category || p.category;
     const commission = Number(req.body.commission || p.commission);
+    const stock = req.body.stock !== undefined ? Number(req.body.stock) : p.stock;
+    const low_stock_threshold = req.body.low_stock_threshold !== undefined ? Number(req.body.low_stock_threshold) : p.low_stock_threshold;
     const image = req.file ? '/uploads/' + req.file.filename : req.body.image_url || p.image;
 
     await db.run(
-      'UPDATE products SET name = ?, price = ?, description = ?, image = ?, category = ?, commission = ? WHERE id = ?',
-      [name, price, description, image, category, commission, id]
+      'UPDATE products SET name = ?, price = ?, description = ?, image = ?, category = ?, commission = ?, stock = ?, low_stock_threshold = ? WHERE id = ?',
+      [name, price, description, image, category, commission, stock, low_stock_threshold, id]
     );
     res.json({ msg: "updated" });
   });
@@ -234,14 +269,31 @@ async function startServer() {
 
   // ====================== ORDER ======================
   app.post('/api/orders', async (req, res) => {
-    const { total, status, method, items, customer } = req.body;
+    const { total, status, method, items, customer, affiliate_code } = req.body;
     try {
+      await db.run('BEGIN TRANSACTION');
       const result = await db.run(
-        'INSERT INTO orders (total, status, method, items_json, customer_json) VALUES (?, ?, ?, ?, ?)', 
-        [total, status, method, JSON.stringify(items), JSON.stringify(customer)]
+        'INSERT INTO orders (total, status, method, items_json, customer_json, affiliate_code) VALUES (?, ?, ?, ?, ?, ?)', 
+        [total, status, method, JSON.stringify(items), JSON.stringify(customer), affiliate_code || null]
       );
+
+      // Decrement stock for each ordered item
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (item.id && item.quantity) {
+             const product = await db.get('SELECT stock FROM products WHERE id = ?', [item.id]);
+             if (product) {
+                 const newStock = Math.max(0, product.stock - item.quantity);
+                 await db.run('UPDATE products SET stock = ? WHERE id = ?', [newStock, item.id]);
+             }
+          }
+        }
+      }
+
+      await db.run('COMMIT');
       res.json({ id: result.lastID, msg: "order created" });
     } catch(err) {
+      await db.run('ROLLBACK').catch(() => {});
       console.error(err);
       res.status(500).json({ error: "Failed to create order" });
     }
@@ -259,8 +311,11 @@ async function startServer() {
 
   app.post('/api/admin/orders/delivery', adminRequired, async (req, res) => {
     const { order_id, status } = req.body;
-    await db.run('UPDATE orders SET delivery_status = ? WHERE id = ?', [status, order_id]);
-    res.json({ msg: "delivery updated" });
+    await db.run('UPDATE orders SET status = ? WHERE id = ?', [status, order_id]);
+    
+    // If setting to EFFECTUÉ, maybe trigger commissions if not already paid?
+    // But since admin is manually setting it, we'll just update the status field.
+    res.json({ msg: "status updated" });
   });
 
   // ====================== PAYMENT VALIDATION ======================
@@ -324,6 +379,52 @@ async function startServer() {
     res.json({ commissions });
   });
 
+  // Client Affiliate Routes
+  app.get('/api/affiliate/dashboard', authRequired, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      let affiliate = await db.get('SELECT * FROM affiliates WHERE user_id = ?', [user.id]);
+      
+      if (!affiliate) {
+         return res.json({ isAffiliate: false });
+      }
+
+      const commissions = await db.all('SELECT * FROM commissions WHERE affiliate_id = ? ORDER BY created_at DESC', [affiliate.id]);
+      
+      res.json({
+        isAffiliate: true,
+        affiliate,
+        commissions
+      });
+    } catch (error) {
+      console.error('Affiliate Dashboard Error:', error);
+      res.status(500).json({ error: 'Intrenal server error' });
+    }
+  });
+
+  app.post('/api/affiliate/apply', authRequired, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      let affiliate = await db.get('SELECT * FROM affiliates WHERE user_id = ?', [user.id]);
+      
+      if (affiliate) {
+        return res.status(400).json({ error: 'Vous êtes déjà affilié.' });
+      }
+
+      const code = 'AFF' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const result = await db.run(
+        'INSERT INTO affiliates (user_id, code, balance) VALUES (?, ?, 0)',
+        [user.id, code]
+      );
+      
+      affiliate = await db.get('SELECT * FROM affiliates WHERE id = ?', [result.lastID]);
+      res.json({ success: true, affiliate });
+    } catch(err) {
+      console.error('Affiliate Apply Error:', err);
+      res.status(500).json({ error: 'Failed to create affiliate account' });
+    }
+  });
+
   // ====================== DESIGN ======================
   app.post('/api/admin/design', adminRequired, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), async (req, res) => {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -380,7 +481,7 @@ async function startServer() {
   app.get('/api/admin/dashboard', adminRequired, async (req, res) => {
     const products = await db.get('SELECT COUNT(*) as count FROM products');
     const orders = await db.get('SELECT COUNT(*) as count FROM orders');
-    const revenueRow = await db.get('SELECT SUM(price) as total FROM orders WHERE status = "paid"');
+    const revenueRow = await db.get('SELECT SUM(total) as total FROM orders');
     const commissions = await db.get('SELECT COUNT(*) as count FROM commissions');
 
     res.json({

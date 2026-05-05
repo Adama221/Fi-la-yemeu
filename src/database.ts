@@ -26,7 +26,9 @@ export async function initDb() {
       description TEXT,
       image TEXT,
       category TEXT,
-      commission REAL
+      commission REAL,
+      stock INTEGER DEFAULT 0,
+      low_stock_threshold INTEGER DEFAULT 5
     );
 
     CREATE TABLE IF NOT EXISTS payment_configs (
@@ -66,6 +68,7 @@ export async function initDb() {
       affiliate_id INTEGER,
       amount REAL,
       status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (affiliate_id) REFERENCES affiliates (id)
     );
 
@@ -87,6 +90,8 @@ export async function initDb() {
     const productsCols = productsInfo.map(c => (c as any).name);
     if (!productsCols.includes('category')) await db.run('ALTER TABLE products ADD COLUMN category TEXT');
     if (!productsCols.includes('commission')) await db.run('ALTER TABLE products ADD COLUMN commission REAL');
+    if (!productsCols.includes('stock')) await db.run('ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0');
+    if (!productsCols.includes('low_stock_threshold')) await db.run('ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER DEFAULT 5');
 
     const ordersInfo = await db.all("PRAGMA table_info(orders)");
     const ordersCols = ordersInfo.map(c => (c as any).name);
@@ -95,6 +100,11 @@ export async function initDb() {
     if (!ordersCols.includes('customer_json')) await db.run('ALTER TABLE orders ADD COLUMN customer_json TEXT');
     if (!ordersCols.includes('items_json')) await db.run('ALTER TABLE orders ADD COLUMN items_json TEXT');
     if (!ordersCols.includes('created_at')) await db.run('ALTER TABLE orders ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+    if (!ordersCols.includes('affiliate_code')) await db.run('ALTER TABLE orders ADD COLUMN affiliate_code TEXT');
+
+    const commissionsInfo = await db.all("PRAGMA table_info(commissions)");
+    const commissionsCols = commissionsInfo.map(c => (c as any).name);
+    if (!commissionsCols.includes('created_at')) await db.run('ALTER TABLE commissions ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
   } catch (err) {
     console.warn("Migration warning:", err);
   }

@@ -48,6 +48,7 @@ export default function Header() {
           <Link to="/" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>Accueil</Link>
           <Link to="/products" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/products' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>La Boutique</Link>
           {isAdmin && <Link to="/admin" className="text-[10px] uppercase tracking-[0.2em] font-semibold text-secondary hover:text-primary transition-colors duration-300 pb-1 border-b border-transparent">Administration</Link>}
+          {user && !isAdmin && <Link to="/affiliate" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/affiliate' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>Affiliation</Link>}
         </nav>
 
         {/* Desktop Actions */}
@@ -110,6 +111,7 @@ export default function Header() {
                 {itemsCount > 0 && <span className="bg-secondary text-white text-[10px] w-6 h-6 rounded-full flex items-center justify-center">{itemsCount}</span>}
               </Link>
               {isAdmin && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="text-2xl font-serif text-secondary border-b border-primary/10 pb-4">Administration</Link>}
+              {user && !isAdmin && <Link to="/affiliate" onClick={() => setIsMenuOpen(false)} className="text-2xl font-serif text-secondary border-b border-primary/10 pb-4">Affiliation</Link>}
               {user ? (
                  <div className="pt-4 flex justify-between items-center">
                     <div>

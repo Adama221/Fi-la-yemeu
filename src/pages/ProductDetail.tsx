@@ -39,6 +39,11 @@ export default function ProductDetail() {
   }
 
   const handleAddToCart = () => {
+    if (product.stock !== undefined && product.stock <= 0) {
+       alert("Ce produit est actuellement en rupture de stock.");
+       return;
+    }
+    
     addToCart({
       id: product.id,
       name: product.name,
@@ -86,12 +91,18 @@ export default function ProductDetail() {
             </div>
 
             <div className="flex flex-col gap-6 mb-20 mt-auto">
-              <button 
-                onClick={handleAddToCart}
-                className="w-full bg-primary text-background-warm py-5 text-[10px] uppercase tracking-[0.2em] font-semibold hover:bg-secondary hover:text-white transition-all duration-300 flex items-center justify-center gap-3 shadow-md border border-primary hover:border-secondary"
-              >
-                <ShoppingBag className="w-4 h-4" /> Ajouter au Panier
-              </button>
+              {product.stock !== undefined && product.stock <= 0 ? (
+                <div className="w-full bg-primary/5 text-primary/40 py-5 text-[10px] uppercase tracking-[0.2em] font-semibold flex items-center justify-center gap-3 cursor-not-allowed">
+                  <ShoppingBag className="w-4 h-4 opacity-50" /> Rupture de stock
+                </div>
+              ) : (
+                <button 
+                  onClick={handleAddToCart}
+                  className="w-full bg-primary text-background-warm py-5 text-[10px] uppercase tracking-[0.2em] font-semibold hover:bg-secondary hover:text-white transition-all duration-300 flex items-center justify-center gap-3 shadow-md border border-primary hover:border-secondary"
+                >
+                  <ShoppingBag className="w-4 h-4" /> Ajouter au Panier
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-10 border-t border-primary/20">

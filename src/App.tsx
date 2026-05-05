@@ -9,6 +9,7 @@ import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import AdminDashboard from './pages/AdminDashboard';
+import AffiliateDashboard from './pages/AffiliateDashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Success from './pages/Success';
@@ -45,6 +46,9 @@ export default function App() {
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<AdminDashboard />} />
               </Route>
+
+              {/* Affiliate Dashboard */}
+              <Route path="/affiliate" element={<AffiliateDashboard />} />
 
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />

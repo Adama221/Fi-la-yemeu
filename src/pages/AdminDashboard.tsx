@@ -28,6 +28,8 @@ export default function AdminDashboard() {
   const [productCategory, setProductCategory] = useState('Femme');
   const [productDescription, setProductDescription] = useState('');
   const [productImage, setProductImage] = useState('https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80&w=800');
+  const [productStock, setProductStock] = useState('0');
+  const [productLowStock, setProductLowStock] = useState('5');
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
 
@@ -194,6 +196,8 @@ export default function AdminDashboard() {
       formData.append('price', String(productPrice));
       formData.append('description', productDescription);
       formData.append('category', productCategory);
+      formData.append('stock', String(productStock));
+      formData.append('low_stock_threshold', String(productLowStock));
       if (productCommission) {
         formData.append('commission', String(productCommission));
       }
@@ -226,6 +230,8 @@ export default function AdminDashboard() {
       setProductCommission('');
       setProductImage('');
       setProductImageFiles([]);
+      setProductStock('0');
+      setProductLowStock('5');
       fetchData();
     } catch (error: any) {
       console.error(error);
@@ -244,6 +250,8 @@ export default function AdminDashboard() {
     setProductCategory(product.category || '');
     setProductCommission(product.commission || '');
     setProductImage(product.image || '');
+    setProductStock(product.stock !== undefined ? String(product.stock) : '0');
+    setProductLowStock(product.low_stock_threshold !== undefined ? String(product.low_stock_threshold) : '5');
     setIsAddProductOpen(true);
   };
 
@@ -367,6 +375,28 @@ export default function AdminDashboard() {
               </button>
            </div>
         </header>
+
+        {products.filter(p => p.stock !== undefined && p.stock <= (p.low_stock_threshold || 5)).length > 0 && (
+          <div className="mb-12 bg-red-50 border border-red-100 p-8 rounded-[2rem] flex items-center justify-between">
+            <div className="flex items-center gap-6">
+               <div className="w-12 h-12 bg-red-100 rounded-full flex flex-shrink-0 items-center justify-center text-red-500">
+                  <AlertCircle className="w-6 h-6" />
+               </div>
+               <div>
+                  <h4 className="text-xl font-serif text-red-800 font-bold mb-1">Alerte Stock Faible</h4>
+                  <p className="text-sm font-sans text-red-600/80">
+                    Vous avez {products.filter(p => p.stock !== undefined && p.stock <= (p.low_stock_threshold || 5)).length} produit(s) en rupture ou proche de la rupture de stock.
+                  </p>
+               </div>
+            </div>
+            <button 
+              onClick={() => setActiveTab('products')}
+              className="bg-red-500 text-white px-6 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-red-600 transition-colors"
+            >
+              Voir le stock
+            </button>
+          </div>
+        )}
 
         {activeTab === 'dashboard' && (
           <div className="space-y-16">
@@ -508,15 +538,16 @@ export default function AdminDashboard() {
                   <tr className="text-[10px] font-bold uppercase tracking-widest text-primary/40 border-b border-primary/5">
                     <th className="px-10 py-6">Produit</th>
                     <th className="px-10 py-6">Catégorie</th>
-                    <th className="px-10 py-6">Prix</th>
                     <th className="px-10 py-6 text-center">Commission</th>
+                    <th className="px-10 py-6 text-center">Stock</th>
+                    <th className="px-10 py-6">Prix</th>
                     <th className="px-10 py-6 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="text-xs">
                   {products.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-10 py-6 text-center text-primary/40 italic">Aucun produit trouvé</td>
+                      <td colSpan={6} className="px-10 py-6 text-center text-primary/40 italic">Aucun produit trouvé</td>
                     </tr>
                   ) : products.map((item, i) => (
                     <tr key={item.id} className="border-b border-primary/5 hover:bg-accent-soft/10 transition-colors">
@@ -534,6 +565,18 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-10 py-6 text-center font-bold text-primary">
                         {item.commission ? <span className="bg-secondary/10 text-secondary px-3 py-1 rounded-full">{item.commission}%</span> : <span className="text-primary/40">-</span>}
+                      </td>
+                      <td className="px-10 py-6 text-center">
+                        <div className="flex flex-col items-center">
+                           <span className={`text-base font-bold ${item.stock <= (item.low_stock_threshold || 5) ? 'text-red-500' : 'text-primary'}`}>
+                             {item.stock || 0}
+                           </span>
+                           {item.stock <= (item.low_stock_threshold || 5) && (
+                             <span className="text-[8px] uppercase tracking-widest text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded flex items-center gap-1 mt-1">
+                               <AlertCircle className="w-2 h-2" /> Faible
+                             </span>
+                           )}
+                        </div>
                       </td>
                       <td className="px-10 py-6 font-serif italic text-lg text-secondary font-bold">{formatPrice(item.price)}</td>
                       <td className="px-10 py-6 text-right">
@@ -886,6 +929,14 @@ export default function AdminDashboard() {
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Commission Affilié (%)</label>
                       <input type="number" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="10" value={productCommission} onChange={e => setProductCommission(e.target.value)}/>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Stock Disponible</label>
+                      <input type="number" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="0" required value={productStock} onChange={e => setProductStock(e.target.value)}/>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Seuil Alerte (Low Stock)</label>
+                      <input type="number" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="5" required value={productLowStock} onChange={e => setProductLowStock(e.target.value)}/>
                     </div>
                     <div className="space-y-2 col-span-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Catégorie</label>

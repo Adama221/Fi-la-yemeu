@@ -3,9 +3,11 @@ import { CreditCard, Wallet, Smartphone, ShieldCheck, ArrowRight, CheckCircle2 }
 import { formatPrice } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../contexts/CartContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
+  const navigate = useNavigate();
   const [method, setMethod] = useState<'orange' | 'wave' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [waveStep, setWaveStep] = useState(1);
@@ -21,6 +23,7 @@ export default function Checkout() {
 
   const createOrder = async (payMethod: string) => {
     try {
+      const affiliateCode = sessionStorage.getItem('affiliate_code') || undefined;
       const res = await fetch('/api/orders', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
@@ -29,6 +32,7 @@ export default function Checkout() {
             items,
             total,
             method: payMethod,
+            affiliate_code: affiliateCode,
             status: payMethod === 'orange' ? 'EFFECTUÉ' : 'VÉRIFICATION'
          })
       });
@@ -59,9 +63,9 @@ export default function Checkout() {
             
             clearCart();
             if (data.payment_url) {
-                window.location.href = data.payment_url;
+                navigate(data.payment_url);
             } else {
-                window.location.href = `/success?orderId=${orderId}&amount=${total}&method=orange`;
+                navigate(`/success?orderId=${orderId}&amount=${total}&method=orange`);
             }
         } catch (e) {
             console.error(e);
@@ -83,7 +87,7 @@ export default function Checkout() {
       const orderId = await createOrder('wave');
       clearCart();
       setTimeout(() => {
-          window.location.href = `/success?orderId=${orderId}&amount=${total}&method=wave`;
+          navigate(`/success?orderId=${orderId}&amount=${total}&method=wave`);
       }, 2000);
     } catch (e) {
       alert("Erreur lors de la confirmation Wave");

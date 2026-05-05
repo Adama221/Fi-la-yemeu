@@ -38,6 +38,12 @@ export default function Products() {
 
   const handleAddToCart = (product: any, e: React.MouseEvent) => {
     e.preventDefault();
+    // Default undefined to active if we don't know the stock, assuming new system transition
+    if (product.stock !== undefined && product.stock <= 0) {
+       alert("Ce produit est actuellement en rupture de stock.");
+       return;
+    }
+    
     addToCart({
       id: product.id,
       name: product.name,
@@ -133,6 +139,11 @@ export default function Products() {
                         alt={product.name}
                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                       />
+                      {product.stock !== undefined && product.stock <= 0 && (
+                         <div className="absolute top-0 left-0 w-full h-full bg-primary/10 backdrop-blur-[1px] flex items-center justify-center pointer-events-none z-10">
+                            <span className="bg-white/90 text-primary px-6 py-2 text-[10px] uppercase font-bold tracking-[0.2em] shadow-xl">Épuisé</span>
+                         </div>
+                      )}
                     </Link>
                     
                     <div className="flex flex-col flex-grow">
@@ -144,12 +155,18 @@ export default function Products() {
                       </div>
                       <p className="font-sans font-light text-xs text-primary/60 line-clamp-1 mb-6 flex-grow">{product.description}</p>
                       
-                      <button 
-                        onClick={(e) => handleAddToCart(product, e)}
-                        className="w-full bg-transparent border border-primary/20 text-primary py-3 text-[9px] uppercase font-semibold tracking-[0.2em] hover:bg-primary hover:text-background-warm hover:border-primary transition-all duration-300 flex items-center justify-center gap-2"
-                      >
-                        Ajouter au Panier
-                      </button>
+                      {product.stock !== undefined && product.stock <= 0 ? (
+                         <div className="w-full bg-primary/5 text-primary/40 py-3 text-[9px] uppercase font-semibold tracking-[0.2em] flex items-center justify-center cursor-not-allowed">
+                           Rupture de stock
+                         </div>
+                      ) : (
+                        <button 
+                          onClick={(e) => handleAddToCart(product, e)}
+                          className="w-full bg-transparent border border-primary/20 text-primary py-3 text-[9px] uppercase font-semibold tracking-[0.2em] hover:bg-primary hover:text-background-warm hover:border-primary transition-all duration-300 flex items-center justify-center gap-2"
+                        >
+                          Ajouter au Panier
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 ))}
