@@ -10,6 +10,7 @@ export default function AffiliateDashboard() {
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState('');
 
   useEffect(() => {
@@ -20,17 +21,32 @@ export default function AffiliateDashboard() {
 
   const fetchDashboard = async () => {
     try {
+      setIsLoading(true);
+      setError(null);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
       const res = await fetch('/api/affiliate/dashboard', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
+        },
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         const data = await res.json();
         setDashboardData(data);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Erreur: ${res.status}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch dashboard data:', err);
+      const msg = (err.message === 'Failed to fetch' || err.name === 'AbortError')
+        ? "Impossible de contacter le serveur d'affiliation."
+        : err.message;
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -124,6 +140,14 @@ export default function AffiliateDashboard() {
               <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-secondary mb-2">Espace Affilié</p>
               <h1 className="text-4xl lg:text-5xl font-serif font-black italic tracking-tighter">Votre Tableau de Bord</h1>
            </div>
+           {error && (
+              <button 
+                onClick={fetchDashboard}
+                className="bg-red-50 text-red-500 border border-red-200 px-6 py-3 rounded-full text-[9px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2"
+              >
+                 {error} | Réessayer
+              </button>
+            )}
         </header>
 
         <div className="grid lg:grid-cols-3 gap-8">

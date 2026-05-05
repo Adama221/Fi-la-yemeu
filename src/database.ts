@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
+import bcrypt from 'bcryptjs';
 
 export async function initDb() {
   const db = await open({
@@ -110,10 +111,13 @@ export async function initDb() {
   }
 
   // Insert Admin
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Pape2210';
+  const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
+  
   const admins = [
-    { email: 'pape@samabutik.com', username: 'Pape', password: process.env.ADMIN_PASSWORD || 'Pape221' },
-    { email: 'papesamabutik@gmail.com', username: 'PapeOld', password: process.env.ADMIN_PASSWORD || 'Pape221' },
-    { email: '78177233ds@gmail.com', username: '78177233ds', password: process.env.ADMIN_PASSWORD || 'Pape221' }
+    { email: 'pape@samabutik.com', username: 'Pape' },
+    { email: 'papesamabutik@gmail.com', username: 'PapeOld' },
+    { email: '78177233ds@gmail.com', username: '78177233ds' }
   ];
   
   for (const admin of admins) {
@@ -121,14 +125,19 @@ export async function initDb() {
     if (!user) {
       await db.run(
         'INSERT INTO users (username, email, password, role, is_staff, is_superuser) VALUES (?, ?, ?, ?, ?, ?)',
-        [admin.username, admin.email, admin.password, 'admin', 1, 1]
+        [admin.username, admin.email, hashedAdminPassword, 'admin', 1, 1]
       );
     } else {
       // Ensure role and username are correct even if already exists
-      await db.run(
-        'UPDATE users SET username = ?, role = "admin", is_staff = 1, is_superuser = 1, password = ? WHERE email = ?', 
-        [admin.username, admin.password, admin.email]
-      );
+      // Only update password if strictly necessary (different env or unhashed)
+      const needsPasswordUpdate = !user.password.startsWith('$2') || (process.env.ADMIN_PASSWORD && admin.email === 'pape@samabutik.com');
+      
+      if (needsPasswordUpdate || user.role !== 'admin') {
+        await db.run(
+          'UPDATE users SET username = ?, role = "admin", is_staff = 1, is_superuser = 1, password = ? WHERE email = ?', 
+          [admin.username, hashedAdminPassword, admin.email]
+        );
+      }
     }
   }
 
