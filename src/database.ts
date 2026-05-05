@@ -111,7 +111,7 @@ export async function initDb() {
   }
 
   // Insert Admin
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Pape2210';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Pape221';
   const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
   
   const admins = [
@@ -129,8 +129,9 @@ export async function initDb() {
       );
     } else {
       // Ensure role and username are correct even if already exists
-      // Only update password if strictly necessary (different env or unhashed)
-      const needsPasswordUpdate = !user.password.startsWith('$2') || (process.env.ADMIN_PASSWORD && admin.email === 'pape@samabutik.com');
+      // Force update password if it's one of the default admins to ensure it matches current default
+      const isDefaultAdmin = admin.email === 'pape@samabutik.com';
+      const needsPasswordUpdate = !user.password.startsWith('$2') || isDefaultAdmin;
       
       if (needsPasswordUpdate || user.role !== 'admin') {
         await db.run(

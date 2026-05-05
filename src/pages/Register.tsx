@@ -45,21 +45,17 @@ export default function Register() {
       });
 
       // 2. Local Backend Registration
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      
       try {
         const res = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, name, role: assignedRole }),
-          signal: controller.signal
+          body: JSON.stringify({ email, password, name, role: assignedRole })
         });
-        clearTimeout(timeoutId);
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({ error: 'Erreur backend' }));
           if (authError) throw new Error(errData.error || authError.message);
+          throw new Error(errData.error || "Erreur lors de l'inscription");
         }
 
         const localData = await res.json().catch(() => null);
@@ -74,8 +70,8 @@ export default function Register() {
           throw new Error("Impossible de créer le compte.");
         }
       } catch (fetchErr: any) {
-        if (fetchErr.name === 'AbortError' || fetchErr.message === 'Failed to fetch') {
-           throw new Error("Le serveur est injoignable pour l'inscription. Réessayez.");
+        if (fetchErr.message === 'Failed to fetch' || fetchErr.name === 'AbortError') {
+           throw new Error("Serveur inaccessible pour l'inscription. Vérifiez votre connexion.");
         }
         throw fetchErr;
       }
@@ -97,8 +93,6 @@ export default function Register() {
   const handleGoogleAuth = async () => {
     setLoading(true);
     setError('');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     try {
       const { error: sbError } = await supabase.auth.signInWithOAuth({
@@ -126,10 +120,8 @@ export default function Register() {
            const res = await fetch('/api/auth/google', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ email: email || 'pape@samabutik.com' }),
-             signal: controller.signal
+             body: JSON.stringify({ email: email || 'pape@samabutik.com' })
            });
-           clearTimeout(timeoutId);
            
            if (!res.ok) {
              const data = await res.json().catch(() => ({}));

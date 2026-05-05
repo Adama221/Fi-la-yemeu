@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import multer from 'multer';
@@ -19,7 +20,9 @@ const upload = multer({ dest: path.join(__dirname, 'uploads/') });
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-pour-samabutik';
 
 async function startServer() {
+  console.log('Starting DB initialization...');
   const db = await initDb();
+  console.log('DB initialized successfully');
   const app = express();
   const PORT = 3000;
 
@@ -50,30 +53,40 @@ async function startServer() {
 
   app.post('/api/login', async (req, res) => {
     const { identity, password } = req.body;
+    const cleanIdentity = identity?.trim() || '';
+    console.log(`Login attempt for: "${cleanIdentity}"`);
     
-    if (!identity || !password) {
+    if (!cleanIdentity || !password) {
       return res.status(400).json({ error: "L'e-mail et le mot de passe sont requis." });
     }
 
     const user = await db.get(
-      'SELECT * FROM users WHERE username = ? OR email = ?',
-      [identity, identity]
+      'SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)',
+      [cleanIdentity, cleanIdentity]
     );
 
     if (!user) {
+      console.log(`User not found: "${cleanIdentity}"`);
       return res.status(401).json({ error: "Utilisateur introuvable ou identifiants incorrects." });
     }
 
     // Check if the hashed password matches (fallback to plain text check if not hashed yet to support older records)
-    const isPasswordValid = await bcrypt.compare(password, user.password).catch(() => false);
+    const isPasswordValid = await bcrypt.compare(password, user.password).catch((err) => {
+      console.error('Bcrypt compare error:', err);
+      return false;
+    });
     const isOldPlaintextMatch = user.password === password;
 
+    console.log(`Password check for "${cleanIdentity}": bcrypt=${isPasswordValid}, plain=${isOldPlaintextMatch}`);
+
     if (!isPasswordValid && !isOldPlaintextMatch) {
+      console.log(`Login failed for "${cleanIdentity}": password mismatch`);
       return res.status(401).json({ error: "Mot de passe incorrect." });
     }
 
     // If it was a plaintext match from an old database record, update it to hashed
     if (isOldPlaintextMatch && !isPasswordValid) {
+        console.log(`Upgrading password for ${identity} to bcrypt hash`);
         const newHash = await bcrypt.hash(password, 10);
         await db.run('UPDATE users SET password = ? WHERE id = ?', [newHash, user.id]);
     }
@@ -494,10 +507,16 @@ async function startServer() {
 
   // API Routes
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      tech_info: {
+        admin_default: 'pape@samabutik.com / Pape221',
+        supabase_redirect: 'https://toxpzpxvowuduixhaxzq.supabase.co/auth/v1/callback'
+      }
+    });
   });
 
-  // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -506,16 +525,31 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    } else {
+      console.warn('Production build "dist" folder not found. Serving API only.');
+    }
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  // Only listen if we are not in a serverless environment or if explicitly running locally
+  if (process.env.VERCEL) {
+    console.log('Running on Vercel environment');
+  } else if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
+  
+  return app;
 }
 
-startServer();
+// Start the server
+const serverPromise = startServer();
+
+// Export the server promise (default export for some environments)
+export default serverPromise;
 

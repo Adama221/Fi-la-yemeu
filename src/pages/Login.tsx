@@ -31,8 +31,6 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     try {
       // 1. Try Supabase Auth Login
@@ -45,23 +43,27 @@ export default function Login() {
       if (sbError) {
         console.log('Supabase login failed, trying local fallback...', sbError.message);
         
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identity: email, password }),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identity: email, password })
+          });
 
-        if (!res.ok) {
-           const errData = await res.json().catch(() => ({ error: 'Identifiants incorrects.' }));
-           throw new Error(errData.error || 'Erreur de connexion.');
+          if (!res.ok) {
+             const errData = await res.json().catch(() => ({ error: 'Identifiants incorrects.' }));
+             throw new Error(errData.error || 'Identifiants incorrects.');
+          }
+
+          const localData = await res.json();
+          await login(localData.user, localData.token);
+        } catch (fetchErr: any) {
+          if (fetchErr.message === 'Failed to fetch' || fetchErr.name === 'AbortError') {
+             throw new Error("Impossible de contacter le serveur Sama Butik. Vérifiez votre connexion.");
+          }
+          throw fetchErr;
         }
-
-        const localData = await res.json();
-        await login(localData.user, localData.token);
       } else {
-        clearTimeout(timeoutId);
         // Supabase login success
         await login(data.user, data.session?.access_token || '');
       }
@@ -80,8 +82,6 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     try {
       const { error: sbError } = await supabase.auth.signInWithOAuth({
@@ -107,10 +107,8 @@ export default function Login() {
            const res = await fetch('/api/auth/google', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ email: email || 'pape@samabutik.com' }),
-             signal: controller.signal
+             body: JSON.stringify({ email: email || 'pape@samabutik.com' })
            });
-           clearTimeout(timeoutId);
            
            if (!res.ok) {
              const data = await res.json().catch(() => ({}));
@@ -257,7 +255,7 @@ export default function Login() {
                     <p className="text-[7px] uppercase text-stone-400 font-bold mb-1">Redirect URI:</p>
                     <code className="text-[9px] block bg-white p-2 rounded border border-stone-100 break-all select-all">https://toxpzpxvowuduixhaxzq.supabase.co/auth/v1/callback</code>
                   </div>
-                  <p className="text-[8px] text-stone-400 italic leading-relaxed">Utilisez "pape@samabutik.com" / "Pape2210" pour l'accès administrateur par défaut.</p>
+                  <p className="text-[8px] text-stone-400 italic leading-relaxed">Utilisez "pape@samabutik.com" / "Pape221" pour l'accès administrateur par défaut.</p>
                </div>
             </motion.div>
           )}
