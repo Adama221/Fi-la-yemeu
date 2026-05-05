@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { initDb } from './src/database.js';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
@@ -13,6 +15,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const upload = multer({ dest: path.join(__dirname, 'uploads/') });
+
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-pour-samabutik';
 
 async function startServer() {
   const db = await initDb();
@@ -23,61 +27,87 @@ async function startServer() {
   app.use(express.urlencoded({ extended: true }));
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-  // ====================== SECURITY/MIDDLEWARE ======================
-  // A simple token mapping for demo
-  const userTokens = new Map<string, any>(); // token -> user object
-
-  // Simulate authentication/login
   app.post('/api/auth/google', async (req, res) => {
     const { email } = req.body;
-    // For demo purposes, we allow auto-login for the specific admin emails
     const targetEmail = email || 'pape@samabutik.com';
     let user = await db.get('SELECT * FROM users WHERE email = ?', [targetEmail]);
     
     if (!user) {
-       // Create it if not exists (Mock)
        const adminEmails = ['papesamabutik@gmail.com', '78177233ds@gmail.com', 'pape@samabutik.com'];
        const role = adminEmails.includes(targetEmail.toLowerCase()) ? 'admin' : 'client';
+       const hashedPassword = await bcrypt.hash('google-mock-pass', 10);
        await db.run(
          'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-         [targetEmail.split('@')[0], targetEmail, 'google-mock-pass', role]
+         [targetEmail.split('@')[0], targetEmail, hashedPassword, role]
        );
        user = await db.get('SELECT * FROM users WHERE email = ?', [targetEmail]);
     }
 
-    const token = Buffer.from(JSON.stringify(user)).toString('base64');
+    const payload = { id: user.id, email: user.email, role: user.role };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
     res.json({ token, user });
   });
 
   app.post('/api/login', async (req, res) => {
     const { identity, password } = req.body;
+    
+    if (!identity || !password) {
+      return res.status(400).json({ error: "L'e-mail et le mot de passe sont requis." });
+    }
+
     const user = await db.get(
-      'SELECT * FROM users WHERE (username = ? OR email = ?) AND password = ?',
-      [identity, identity, password]
+      'SELECT * FROM users WHERE username = ? OR email = ?',
+      [identity, identity]
     );
 
-    if (user) {
-      const token = Buffer.from(JSON.stringify(user)).toString('base64');
-      res.json({ token, user, record: user });
-    } else {
-      res.status(401).json({ error: "Invalid credentials" });
+    if (!user) {
+      return res.status(401).json({ error: "Utilisateur introuvable ou identifiants incorrects." });
     }
+
+    // Check if the hashed password matches (fallback to plain text check if not hashed yet to support older records)
+    const isPasswordValid = await bcrypt.compare(password, user.password).catch(() => false);
+    const isOldPlaintextMatch = user.password === password;
+
+    if (!isPasswordValid && !isOldPlaintextMatch) {
+      return res.status(401).json({ error: "Mot de passe incorrect." });
+    }
+
+    // If it was a plaintext match from an old database record, update it to hashed
+    if (isOldPlaintextMatch && !isPasswordValid) {
+        const newHash = await bcrypt.hash(password, 10);
+        await db.run('UPDATE users SET password = ? WHERE id = ?', [newHash, user.id]);
+    }
+
+    const payload = { id: user.id, email: user.email, role: user.role };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+    
+    res.json({ token, user, record: user });
   });
 
   app.post('/api/register', async (req, res) => {
     const { username, email, password, name, role } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: "L'e-mail et le mot de passe sont requis." });
+    }
+    
     const adminEmails = ['papesamabutik@gmail.com', '78177233ds@gmail.com', 'pape@samabutik.com'];
     const assignedRole = adminEmails.includes(email?.toLowerCase()) ? 'admin' : (role || 'client');
     
     try {
+      const hashedPassword = await bcrypt.hash(password, 10);
       const result = await db.run(
         'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-        [username || email.split('@')[0], email, password, assignedRole]
+        [username || email.split('@')[0], email, hashedPassword, assignedRole]
       );
       const user = await db.get('SELECT * FROM users WHERE id = ?', [result.lastID]);
-      const token = Buffer.from(JSON.stringify(user)).toString('base64');
+      const payload = { id: user.id, email: user.email, role: user.role };
+      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
       res.json({ token, user });
     } catch (e: any) {
+      if (e.message && e.message.includes('UNIQUE constraint failed')) {
+         return res.status(400).json({ error: "Cet e-mail ou nom d'utilisateur est déjà pris." });
+      }
       res.status(400).json({ error: e.message });
     }
   });
@@ -85,8 +115,7 @@ async function startServer() {
   const adminRequired = async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('AdminRequired: No token provided');
-      return res.status(401).json({ error: "login required" });
+      return res.status(401).json({ error: "Accès refusé, veuillez vous connecter." });
     }
  
     const token = authHeader.split(' ')[1];
@@ -95,43 +124,19 @@ async function startServer() {
     try {
       if (token === 'mock-token-pape') {
          user = { role: 'admin', email: 'pape@samabutik.com' };
-      } else if (token.startsWith('eyJ') && token.split('.').length === 3) {
-         // Supabase token - Decode payload
-         const parts = token.split('.');
-         const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-         const email = payload.email;
-         
-         // Whitelist check
-         const adminEmails = ['78177233ds@gmail.com', 'papesamabutik@gmail.com', 'pape@samabutik.com'];
-         if (email && adminEmails.includes(email.toLowerCase())) {
-            user = { role: 'admin', email };
-         } else if (email) {
-            // Check local DB for role
-            const dbUser = await db.get('SELECT role FROM users WHERE email = ?', [email]);
-            if (dbUser) {
-               user = { role: dbUser.role, email };
-            } else {
-               // Fallback: check if role is in user_metadata
-               user = { role: payload.user_metadata?.role || 'client', email };
-            }
-         }
       } else {
-         const decoded = Buffer.from(token, 'base64').toString('utf8');
-         user = JSON.parse(decoded);
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        user = decoded;
       }
-    } catch(e) {
-      console.log('AdminRequired: Token decode fail', e);
+    } catch(e: any) {
+      if (e.name === 'TokenExpiredError') {
+        return res.status(401).json({ error: "Token expiré. Veuillez vous reconnecter." });
+      }
+      return res.status(401).json({ error: "Token invalide." });
     }
  
-    if (!user) {
-       console.log('AdminRequired: User not found for token:', token);
-       // Last resort fallback for development environment consistency
-       user = { role: 'admin' }; 
-    }
- 
-    if (user.role !== "admin") {
-      console.log('AdminRequired: User is not admin:', user);
-      return res.status(403).json({ error: "forbidden" });
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Accès interdit : privilèges administrateur requis." });
     }
  
     (req as any).user = user;

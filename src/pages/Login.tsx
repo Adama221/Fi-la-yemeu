@@ -35,19 +35,28 @@ export default function Login() {
       });
 
       if (error) {
-        // Fallback to local server login if Supabase auth fails (might be using local sqlite users)
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identity: email, password })
-        });
+        try {
+          // Fallback to local server login if Supabase auth fails (might be using local sqlite users)
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identity: email, password })
+          });
 
-        if (!res.ok) {
-           const errData = await res.json();
-           throw new Error(errData.error || 'Identifiants incorrects');
+          const contentType = res.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+             throw new Error(error.message); // Fallback to original Supabase error if backend is unavailable (e.g. static hosting)
+          }
+
+          if (!res.ok) {
+             const errData = await res.json();
+             throw new Error(errData.error || 'Identifiants incorrects.');
+          }
+          const localData = await res.json();
+          await login(localData.user, localData.token);
+        } catch (fallbackError: any) {
+           throw new Error(fallbackError.message || 'Erreur de connexion serveur.');
         }
-        const localData = await res.json();
-        await login(localData.user, localData.token);
       } else {
         await login(data.user, data.session?.access_token || '');
       }
