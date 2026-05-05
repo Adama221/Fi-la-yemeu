@@ -111,7 +111,7 @@ export async function initDb() {
   }
 
   // Insert Admin
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Pape221';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Pape2210';
   const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
   
   const admins = [

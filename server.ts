@@ -511,7 +511,7 @@ async function startServer() {
       status: 'ok', 
       timestamp: new Date().toISOString(),
       tech_info: {
-        admin_default: 'pape@samabutik.com / Pape221',
+        admin_default: 'pape@samabutik.com / Pape2210',
         supabase_redirect: 'https://toxpzpxvowuduixhaxzq.supabase.co/auth/v1/callback'
       }
     });

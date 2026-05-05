@@ -45,8 +45,8 @@ export default function Header() {
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
-          <Link to="/" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>Accueil</Link>
-          <Link to="/products" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/products' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>La Boutique</Link>
+          <Link to="/" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>La Boutique</Link>
+          <Link to="/home" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/home' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>Découvrir</Link>
           {isAdmin && <Link to="/admin" className="text-[10px] uppercase tracking-[0.2em] font-semibold text-secondary hover:text-primary transition-colors duration-300 pb-1 border-b border-transparent">Administration</Link>}
           {user && !isAdmin && <Link to="/affiliate" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/affiliate' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>Affiliation</Link>}
         </nav>
@@ -104,8 +104,8 @@ export default function Header() {
             className="md:hidden absolute top-full left-0 w-full bg-background-warm/95 backdrop-blur-xl border-b border-primary/10 overflow-hidden shadow-2xl"
           >
             <div className="container mx-auto px-6 py-10 flex flex-col gap-6">
-              <Link to="/" onClick={() => setIsMenuOpen(false)} className="text-2xl font-serif text-primary border-b border-primary/10 pb-4">Accueil</Link>
-              <Link to="/products" onClick={() => setIsMenuOpen(false)} className="text-2xl font-serif text-primary border-b border-primary/10 pb-4">La Boutique</Link>
+              <Link to="/" onClick={() => setIsMenuOpen(false)} className="text-2xl font-serif text-primary border-b border-primary/10 pb-4">La Boutique</Link>
+              <Link to="/home" onClick={() => setIsMenuOpen(false)} className="text-2xl font-serif text-primary border-b border-primary/10 pb-4">Découvrir</Link>
               <Link to="/cart" onClick={() => setIsMenuOpen(false)} className="text-2xl font-serif text-primary border-b border-primary/10 pb-4 flex justify-between">
                 <span>Panier</span>
                 {itemsCount > 0 && <span className="bg-secondary text-white text-[10px] w-6 h-6 rounded-full flex items-center justify-center">{itemsCount}</span>}

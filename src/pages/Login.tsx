@@ -255,7 +255,7 @@ export default function Login() {
                     <p className="text-[7px] uppercase text-stone-400 font-bold mb-1">Redirect URI:</p>
                     <code className="text-[9px] block bg-white p-2 rounded border border-stone-100 break-all select-all">https://toxpzpxvowuduixhaxzq.supabase.co/auth/v1/callback</code>
                   </div>
-                  <p className="text-[8px] text-stone-400 italic leading-relaxed">Utilisez "pape@samabutik.com" / "Pape221" pour l'accès administrateur par défaut.</p>
+                  <p className="text-[8px] text-stone-400 italic leading-relaxed">Utilisez "pape@samabutik.com" / "Pape2210" pour l'accès administrateur par défaut.</p>
                </div>
             </motion.div>
           )}
