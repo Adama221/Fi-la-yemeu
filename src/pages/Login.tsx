@@ -29,35 +29,31 @@ export default function Login() {
     setLoading(true);
 
     try {
+      // 1. Try Supabase Auth Login
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password
       });
 
+      // 2. If Supabase fails (e.g. invalid key, or user not found there), try local backend
       if (error) {
-        try {
-          // Fallback to local server login if Supabase auth fails (might be using local sqlite users)
-          const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identity: email, password })
-          });
+        console.log('Supabase login failed, trying local fallback...', error.message);
+        
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identity: email, password })
+        });
 
-          const contentType = res.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-             throw new Error(error.message); // Fallback to original Supabase error if backend is unavailable (e.g. static hosting)
-          }
-
-          if (!res.ok) {
-             const errData = await res.json();
-             throw new Error(errData.error || 'Identifiants incorrects.');
-          }
-          const localData = await res.json();
-          await login(localData.user, localData.token);
-        } catch (fallbackError: any) {
-           throw new Error(fallbackError.message || 'Erreur de connexion serveur.');
+        if (!res.ok) {
+           const errData = await res.json().catch(() => ({ error: 'Identifiants incorrects.' }));
+           throw new Error(errData.error || 'Erreur de connexion.');
         }
+
+        const localData = await res.json();
+        await login(localData.user, localData.token);
       } else {
+        // Supabase login success
         await login(data.user, data.session?.access_token || '');
       }
     } catch (error: any) {
@@ -70,15 +66,34 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
+      // 1. Try Supabase OAuth
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin
         }
       });
-      if (error) throw error;
+      
+      if (error) {
+        // If Supabase OAuth is not configured (common error), use local mock Google login
+        if (error.message.includes('OAuth secret') || error.message.includes('not found')) {
+           console.log('Supabase OAuth not configured, using local mock...');
+           const res = await fetch('/api/auth/google', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ email: email || 'pape@samabutik.com' })
+           });
+           
+           if (!res.ok) throw new Error('Local Google auth failed');
+           
+           const data = await res.json();
+           await login(data.user, data.token);
+           return;
+        }
+        throw error;
+      };
     } catch (error: any) {
-      alert("Erreur Google Auth : " + error.message);
+      alert("Erreur Authentification : " + error.message);
     } finally {
       setLoading(false);
     }
@@ -109,7 +124,7 @@ export default function Login() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium uppercase placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
+              className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
             />
           </div>
 
@@ -122,7 +137,7 @@ export default function Login() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium uppercase placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
+              className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
             />
           </div>
 

@@ -31,46 +31,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      // 1. Check Supabase session first
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        setUser(session.user);
-        await fetchProfile(session.user.id, session.user.email || '');
-      } else {
-        // 2. Fallback to local storage for local SQLite users
-        const token = localStorage.getItem('auth_token');
-        const storedUser = localStorage.getItem('auth_user');
+      try {
+        // 1. Check Supabase session first
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (token && storedUser) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
-            await fetchProfile(parsedUser.id, parsedUser.email || '');
-          } catch (e) {
-            console.error('Failed to parse stored user', e);
+        if (sessionError) {
+          console.warn('Supabase session error:', sessionError.message);
+        }
+
+        if (session?.user) {
+          setUser(session.user);
+          await fetchProfile(session.user.id, session.user.email || '');
+        } else {
+          // 2. Fallback to local storage for local SQLite users
+          const token = localStorage.getItem('auth_token');
+          const storedUser = localStorage.getItem('auth_user');
+          
+          if (token && storedUser) {
+            try {
+              const parsedUser = JSON.parse(storedUser);
+              setUser(parsedUser);
+              await fetchProfile(parsedUser.id, parsedUser.email || '');
+            } catch (e) {
+              console.error('Failed to parse stored user', e);
+            }
           }
         }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-        await fetchProfile(session.user.id, session.user.email || '');
-      } else {
-        // Only clear if we don't have a local session
-        if (!localStorage.getItem('auth_token')) {
-          setUser(null);
-          setProfile(null);
+    let subscription: any = null;
+    try {
+      const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+          await fetchProfile(session.user.id, session.user.email || '');
+        } else {
+          // Only clear if we don't have a local session
+          if (!localStorage.getItem('auth_token')) {
+            setUser(null);
+            setProfile(null);
+          }
         }
-      }
-    });
+      });
+      subscription = data.subscription;
+    } catch (err) {
+      console.warn('Supabase onAuthStateChange error:', err);
+    }
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
   }, []);
 
   const fetchProfile = async (id: string, email: string) => {
@@ -79,29 +96,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let role: UserRole = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'client';
     
     // Check Supabase metadata if exists
-    const { data: { user: sbUser } } = await supabase.auth.getUser();
-    if (sbUser?.user_metadata?.role) {
-      role = adminEmails.includes(email.toLowerCase()) ? 'admin' : sbUser.user_metadata.role;
-    } else {
-      // Fallback: Check local storage for migrated users who might have a role there
-      try {
-        const storedUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
-        if (storedUser.role && !adminEmails.includes(email.toLowerCase())) {
-          role = storedUser.role;
-        }
-      } catch (e) {}
-    }
+    try {
+      const { data: { user: sbUser } } = await supabase.auth.getUser();
+      if (sbUser?.user_metadata?.role) {
+        role = adminEmails.includes(email.toLowerCase()) ? 'admin' : sbUser.user_metadata.role;
+      } else {
+        // Fallback: Check local storage for migrated users who might have a role there
+        try {
+          const storedUserStr = localStorage.getItem('auth_user');
+          if (storedUserStr) {
+            const storedUser = JSON.parse(storedUserStr);
+            if (storedUser.role && !adminEmails.includes(email.toLowerCase())) {
+              role = storedUser.role;
+            }
+          }
+        } catch (e) {}
+      }
 
-    const name = sbUser?.user_metadata?.full_name || email.split('@')[0];
-    
-    setProfile({
-      id,
-      email,
-      role,
-      full_name: name,
-      phone: sbUser?.user_metadata?.phone || '',
-      created_at: new Date().toISOString()
-    });
+      const name = sbUser?.user_metadata?.full_name || email.split('@')[0];
+      
+      setProfile({
+        id,
+        email,
+        role,
+        full_name: name,
+        phone: sbUser?.user_metadata?.phone || '',
+        created_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.warn('Profile fetch error:', err);
+      // Construct a minimal profile if Supabase fails
+      setProfile({
+        id,
+        email,
+        role,
+        full_name: email.split('@')[0],
+        created_at: new Date().toISOString()
+      });
+    }
   };
 
   const login = async (userData: any, token: string) => {

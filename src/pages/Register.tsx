@@ -28,7 +28,7 @@ export default function Register() {
     }
 
     try {
-      // 1. Supabase Auth Signup
+      // 1. Try Supabase Auth Signup
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -40,9 +40,7 @@ export default function Register() {
         }
       });
 
-      if (authError) throw authError;
-
-      // 2. Sync with local backend for compatibility with other tables (orders, affiliates)
+      // 2. Local Backend Registration (Primary or Sync)
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,20 +48,33 @@ export default function Register() {
       });
 
       if (!res.ok) {
-        // If local sync fails, we still have the supabase user, but maybe alert or handle
-        console.warn("Local sync failed, but Supabase user created");
+        const errData = await res.json().catch(() => ({ error: 'Erreur backend' }));
+        // If Supabase failed AND local failed, then we show error
+        if (authError) {
+          throw new Error(errData.error || authError.message);
+        }
+        // If local failed but Supabase worked, maybe just log or show warning
+        console.error("Local register failed", errData);
       }
+
+      const localData = await res.json().catch(() => null);
 
       if (authData.user) {
         // Log in with the supabase session
         const sessionToken = (await supabase.auth.getSession()).data.session?.access_token || '';
         await login(authData.user, sessionToken);
+      } else if (localData && localData.user) {
+        // Fallback to local session
+        await login(localData.user, localData.token);
+      } else {
+        if (authError) throw authError;
+        throw new Error("Impossible de créer le compte.");
+      }
 
-        if (role === 'affiliate') {
-           navigate('/admin');
-        } else {
-           navigate('/');
-        }
+      if (role === 'affiliate') {
+         navigate('/admin');
+      } else {
+         navigate('/');
       }
 
     } catch (err: any) {
@@ -140,7 +151,7 @@ export default function Register() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium uppercase placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
+              className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
             />
           </div>
 
@@ -152,7 +163,7 @@ export default function Register() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium uppercase placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
+              className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
             />
           </div>
 
@@ -166,7 +177,7 @@ export default function Register() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium uppercase placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
+                className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
               />
             </div>
 
@@ -179,7 +190,7 @@ export default function Register() {
                 minLength={8}
                 value={passwordConfirm}
                 onChange={(e) => setPasswordConfirm(e.target.value)}
-                className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium uppercase placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
+                className="w-full bg-accent-soft/30 border border-primary/5 py-5 px-14 rounded-2xl text-xs tracking-widest font-medium placeholder:text-primary/20 focus:outline-none focus:ring-1 focus:ring-secondary focus:bg-white focus:border-secondary transition-all duration-300"
               />
             </div>
           </div>

@@ -5,6 +5,7 @@ import { formatPrice } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageUploader from '../components/ImageUploader';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -21,6 +22,7 @@ export default function AdminDashboard() {
   });
   const navigate = useNavigate();
   const { profile, isAdmin, logout: handleAuthLogout, loading, user } = useAuth();
+   const { updateSettings } = useSettings();
   
   // Product Form state
   const [productName, setProductName] = useState('');
@@ -150,6 +152,12 @@ export default function AdminDashboard() {
         body: formData
       });
       if (!res.ok) throw new Error("Erreur serveur");
+      
+      updateSettings({
+        primaryColor: branding.primary_color,
+        secondaryColor: branding.secondary_color,
+        homepageText: branding.text
+      });
       
       alert('Design modifié avec succès');
     } catch (e: any) {
@@ -768,14 +776,24 @@ export default function AdminDashboard() {
                   <input 
                     type="color" 
                     value={branding.primary_color}
-                    onChange={e => setBranding({...branding, primary_color: e.target.value})}
+                    onChange={e => {
+                       const val = e.target.value;
+                       setBranding({...branding, primary_color: val});
+                       updateSettings({ primaryColor: val });
+                    }}
                     className="w-20 h-20 rounded-2xl border-none outline-none cursor-pointer"
                   />
                   <input 
                     type="text" 
                     value={branding.primary_color}
-                    onChange={e => setBranding({...branding, primary_color: e.target.value})}
-                    className="flex-grow bg-accent-soft/30 border border-primary/10 p-5 text-[10px] font-bold tracking-widest outline-none focus:border-secondary transition-all rounded-2xl uppercase"
+                    onChange={e => {
+                       const val = e.target.value;
+                       setBranding({...branding, primary_color: val});
+                       if (val.length === 7 && val.startsWith('#')) {
+                         updateSettings({ primaryColor: val });
+                       }
+                    }}
+                    className="flex-grow bg-accent-soft/30 border border-primary/10 p-5 text-[10px] font-bold tracking-widest outline-none focus:border-secondary transition-all rounded-2xl"
                   />
                 </div>
               </div>
@@ -785,14 +803,24 @@ export default function AdminDashboard() {
                   <input 
                     type="color" 
                     value={branding.secondary_color}
-                    onChange={e => setBranding({...branding, secondary_color: e.target.value})}
+                    onChange={e => {
+                       const val = e.target.value;
+                       setBranding({...branding, secondary_color: val});
+                       updateSettings({ secondaryColor: val });
+                    }}
                     className="w-20 h-20 rounded-2xl border-none outline-none cursor-pointer"
                   />
                   <input 
                     type="text" 
                     value={branding.secondary_color}
-                    onChange={e => setBranding({...branding, secondary_color: e.target.value})}
-                    className="flex-grow bg-accent-soft/30 border border-primary/10 p-5 text-[10px] font-bold tracking-widest outline-none focus:border-secondary transition-all rounded-2xl uppercase"
+                    onChange={e => {
+                       const val = e.target.value;
+                       setBranding({...branding, secondary_color: val});
+                       if (val.length === 7 && val.startsWith('#')) {
+                         updateSettings({ secondaryColor: val });
+                       }
+                    }}
+                    className="flex-grow bg-accent-soft/30 border border-primary/10 p-5 text-[10px] font-bold tracking-widest outline-none focus:border-secondary transition-all rounded-2xl"
                   />
                 </div>
               </div>
@@ -800,7 +828,11 @@ export default function AdminDashboard() {
                 <label className="text-[10px] uppercase font-bold tracking-[0.4em] text-primary/40">Texte Page d'Accueil</label>
                 <textarea 
                   value={branding.text}
-                  onChange={e => setBranding({...branding, text: e.target.value})}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setBranding({...branding, text: val});
+                    updateSettings({ homepageText: val });
+                  }}
                   className="w-full h-32 bg-accent-soft/30 border border-primary/10 p-5 text-sm font-sans outline-none focus:border-secondary transition-all rounded-2xl"
                   placeholder="Texte de la page d'accueil..."
                 />

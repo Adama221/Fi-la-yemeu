@@ -10,6 +10,7 @@ interface SiteSettings {
 interface SettingsContextType {
   settings: SiteSettings;
   loading: boolean;
+  updateSettings: (newSettings: Partial<SiteSettings>) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -23,6 +24,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
   const [loading, setLoading] = useState(true);
 
+  const updateSettings = (newSettings: Partial<SiteSettings>) => {
+    setSettings(prev => ({ ...prev, ...newSettings }));
+  };
+
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -31,7 +36,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const data = await response.json();
           // Safe access to settings row from the updated API structure { settings: row }
           const s = data.settings || data; 
-          setSettings({
+          updateSettings({
             logo: s.logo || '/logo.png',
             primaryColor: s.primary_color || '#314227',
             secondaryColor: s.secondary_color || '#D4A373',
@@ -49,7 +54,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   return (
-    <SettingsContext.Provider value={{ settings, loading }}>
+    <SettingsContext.Provider value={{ settings, loading, updateSettings }}>
       <div style={{ '--primary-custom': settings.primaryColor, '--secondary-custom': settings.secondaryColor } as React.CSSProperties}>
         {children}
       </div>
