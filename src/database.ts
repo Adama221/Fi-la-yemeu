@@ -111,9 +111,9 @@ export async function initDb() {
 
   // Insert Admin
   const admins = [
-    { email: 'pape@samabutik.com', username: 'Pape', password: 'Pape221' },
-    { email: 'papesamabutik@gmail.com', username: 'PapeOld', password: 'Pape221' },
-    { email: '78177233ds@gmail.com', username: '78177233ds', password: 'Pape221' }
+    { email: 'pape@samabutik.com', username: 'Pape', password: process.env.ADMIN_PASSWORD || 'Pape221' },
+    { email: 'papesamabutik@gmail.com', username: 'PapeOld', password: process.env.ADMIN_PASSWORD || 'Pape221' },
+    { email: '78177233ds@gmail.com', username: '78177233ds', password: process.env.ADMIN_PASSWORD || 'Pape221' }
   ];
   
   for (const admin of admins) {

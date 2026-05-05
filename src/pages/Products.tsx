@@ -21,9 +21,12 @@ export default function Products() {
       if (!response.ok) throw new Error(`Server status: ${response.status}`);
       const data = await response.json();
       setProducts(data.products || data.items || []);
-    } catch (error: any) {
-      console.warn("Failed to fetch products", error);
-      setError(error.message);
+    } catch (err: any) {
+      console.warn("Failed to fetch products", err);
+      const msg = (err.message === 'Failed to fetch' || err.name === 'AbortError')
+        ? "Impossible de charger la collection. Le service est momentanément indisponible."
+        : err.message;
+      setError(msg);
     } finally {
       setLoading(false);
     }

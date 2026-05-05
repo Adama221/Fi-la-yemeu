@@ -103,8 +103,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Check Supabase metadata if exists
     try {
-      const { data: { user: sbUser } } = await supabase.auth.getUser();
-      if (sbUser?.user_metadata?.role) {
+      // Defensive check for Supabase
+      const { data: sbData, error: sbError } = await supabase.auth.getUser().catch(() => ({ data: { user: null }, error: { message: 'Network unreachable' }}));
+      const sbUser = sbData?.user;
+      
+      if (!sbError && sbUser?.user_metadata?.role) {
         role = adminEmails.includes(email.toLowerCase()) ? 'admin' : sbUser.user_metadata.role;
       } else {
         // Fallback: Check local storage for migrated users who might have a role there

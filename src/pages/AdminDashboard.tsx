@@ -36,25 +36,24 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
 
   const [affiliates, setAffiliates] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const [statsData, setStatsData] = useState({ products: 0, orders: 0, revenue: 0, commissions: 0 });
 
   const fetchData = async () => {
     const token = localStorage.getItem('auth_token');
     const headers = { 'Authorization': `Bearer ${token}` };
+    setError(null);
 
     if (isAdmin) {
-      // Fetch Dashboard Stats
       try {
+        // Fetch Dashboard Stats
         const dRes = await fetch('/api/admin/dashboard', { headers });
-        if (dRes.ok) {
-          const dData = await dRes.json();
-          setStatsData(dData);
-        }
-      } catch(e) {}
+        if (!dRes.ok) throw new Error(`Stats: ${dRes.status}`);
+        const dData = await dRes.json();
+        setStatsData(dData);
 
-      // Fetch Settings Branding & Payment
-      try {
+        // Fetch Settings Branding & Payment
         const res = await fetch('/api/settings');
         if (res.ok) {
           const data = await res.json();
@@ -76,37 +75,46 @@ export default function AdminDashboard() {
              orange_api_url: paysData.orange_link || ''
            }));
         }
-      } catch(e) {
-        console.warn('Dashboard fetch settings error:', e);
-      }
 
-      // Fetch Orders
-      try {
-        const ordRes = await fetch('/api/admin/orders', { headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }});
+        // Fetch Orders
+        const ordRes = await fetch('/api/admin/orders', { headers: { 'Authorization': `Bearer ${token}` }});
         if (ordRes.ok) {
           const data = await ordRes.json();
           setOrders(data.orders || []);
         }
-      } catch(e) {}
 
-      // Fetch Affiliates
-      try {
-        const affRes = await fetch('/api/admin/affiliates', { headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }});
+        // Fetch Affiliates
+        const affRes = await fetch('/api/admin/affiliates', { headers: { 'Authorization': `Bearer ${token}` }});
         if (affRes.ok) {
           const data = await affRes.json();
           setAffiliates(data.affiliates || []);
         }
-      } catch(e) {}
+
+      } catch(e: any) {
+        console.warn('Dashboard admin fetch error:', e);
+        const msg = (e.message === 'Failed to fetch' || e.name === 'AbortError')
+          ? "Connexion perdue avec le serveur. Vérifiez votre accès internet ou patientez un instant."
+          : e.message;
+        setError("Erreur admin : " + msg);
+      }
     }
 
-    // Fetch Products
+    // Fetch Products (Public)
     try {
       const prodRes = await fetch('/api/products');
       if (prodRes.ok) {
         const data = await prodRes.json();
         setProducts(data.products || data.items || []);
       }
-    } catch(e) {}
+    } catch(e: any) {
+      console.warn('Dashboard product fetch error:', e);
+      if (!error) {
+        const msg = (e.message === 'Failed to fetch' || e.name === 'AbortError')
+          ? "Impossible de charger les produits (Erreur Réseau)."
+          : e.message;
+        setError(msg);
+      }
+    }
   };
 
   useEffect(() => {
@@ -369,6 +377,14 @@ export default function AdminDashboard() {
               </h1>
            </div>
            <div className="flex gap-6">
+              {error && (
+                <button 
+                  onClick={fetchData}
+                  className="bg-red-50 text-red-500 border border-red-200 px-8 py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2 shadow-sm"
+                >
+                  <AlertCircle className="w-4 h-4" /> Réessayer
+                </button>
+              )}
               <button 
                 onClick={handleExport}
                 className="bg-white border border-primary/10 px-8 py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-secondary hover:text-white transition-all shadow-sm"
