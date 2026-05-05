@@ -9,23 +9,27 @@ export default function Products() {
   const [searchTerm, setSearchTerm] = useState('');
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState('Tous');
   const { addToCart } = useCart();
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch('/api/products');
-        const data = await response.json();
-        setProducts(data.products || data.items || []);
-      } catch (error) {
-        console.warn("Failed to fetch products", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchProducts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/products');
+      if (!response.ok) throw new Error(`Server status: ${response.status}`);
+      const data = await response.json();
+      setProducts(data.products || data.items || []);
+    } catch (error: any) {
+      console.warn("Failed to fetch products", error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchProducts();
   }, []);
 
@@ -61,7 +65,7 @@ export default function Products() {
         {/* Page Header */}
         <div className="mb-20 mt-12">
           <div className="flex flex-col items-center text-center">
-             <p className="text-[10px] uppercase tracking-[0.3em] font-medium text-primary/60 mb-4 divider-x relative inline-block before:w-12 before:h-[1px] before:bg-primary/20 before:absolute before:right-full before:mr-4 before:top-1/2 after:w-12 after:h-[1px] after:bg-primary/20 after:absolute after:left-full after:ml-4 after:top-1/2">
+             <p className="text-[10px] uppercase tracking-[0.3em] font-medium text-primary/60 mb-4 relative inline-block before:w-12 before:h-[1px] before:bg-primary/20 before:absolute before:right-full before:mr-4 before:top-1/2 after:w-12 after:h-[1px] after:bg-primary/20 after:absolute after:left-full after:ml-4 after:top-1/2">
                 Nos Créations
              </p>
              <h1 className="text-5xl md:text-7xl font-serif text-primary leading-none tracking-tight">La Boutique</h1>
@@ -117,6 +121,17 @@ export default function Products() {
               <div className="flex flex-col items-center justify-center p-20 gap-6">
                 <div className="w-10 h-10 border border-primary/20 border-t-primary rounded-full animate-spin"></div>
                 <p className="text-[10px] uppercase font-medium tracking-[0.2em] text-primary/40 animate-pulse">Chargement de la collection...</p>
+              </div>
+            ) : error ? (
+              <div className="border border-red-100 bg-red-50/30 p-16 text-center rounded-[2rem]">
+                <p className="font-serif italic text-red-500 text-xl mb-4">Erreur de chargement</p>
+                <p className="text-[10px] uppercase font-medium tracking-[0.2em] text-red-400 mb-8">{error}</p>
+                <button 
+                  onClick={fetchProducts}
+                  className="px-10 py-4 bg-primary text-white text-[10px] uppercase font-bold tracking-[0.3em] rounded-full hover:bg-secondary transition-all"
+                >
+                  Réessayer la connexion
+                </button>
               </div>
             ) : filteredProducts.length === 0 ? (
                <div className="border border-primary/10 p-16 text-center">

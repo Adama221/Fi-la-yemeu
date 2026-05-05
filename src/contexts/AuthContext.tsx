@@ -31,14 +31,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
+      let session: any = null;
       try {
-        // 1. Check Supabase session first
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
+        // 1. Try Supabase session
+        const { data, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) {
           console.warn('Supabase session error:', sessionError.message);
+        } else {
+          session = data.session;
         }
+      } catch (err) {
+        console.warn('Supabase unreachable, using local fallback:', err);
+      }
 
+      try {
         if (session?.user) {
           setUser(session.user);
           await fetchProfile(session.user.id, session.user.email || '');

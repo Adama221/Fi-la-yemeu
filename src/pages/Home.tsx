@@ -7,19 +7,23 @@ import { useSettings } from '../contexts/SettingsContext';
 
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const { settings } = useSettings();
 
-  useEffect(() => {
-    const fetchFeatured = async () => {
-      try {
-        const response = await fetch('/api/products');
-        const data = await response.json();
-        setFeaturedProducts((data.products || data.items || []).slice(0, 4));
-      } catch (error) {
-        console.warn("Failed to fetch featured products", error);
-      }
-    };
+  const fetchFeatured = async () => {
+    setError(null);
+    try {
+      const response = await fetch('/api/products');
+      if (!response.ok) throw new Error(`Server returned ${response.status}`);
+      const data = await response.json();
+      setFeaturedProducts((data.products || data.items || []).slice(0, 4));
+    } catch (error: any) {
+      console.warn("Failed to fetch featured products", error);
+      setError(error.message);
+    }
+  };
 
+  useEffect(() => {
     fetchFeatured();
   }, []);
 
@@ -70,7 +74,18 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {featuredProducts.length === 0 ? (
+            {error ? (
+              <div className="col-span-full border border-red-200 bg-red-50 p-12 rounded-3xl text-center">
+                <p className="text-red-500 font-serif italic text-xl mb-4">Erreur de connexion</p>
+                <p className="text-[10px] uppercase font-medium tracking-[0.2em] text-red-400 mb-8">{error}</p>
+                <button 
+                  onClick={fetchFeatured}
+                  className="px-8 py-3 bg-red-500 text-white text-[10px] uppercase font-bold tracking-widest rounded-full hover:bg-red-600 transition-colors"
+                >
+                  Réessayer
+                </button>
+              </div>
+            ) : featuredProducts.length === 0 ? (
               <div className="col-span-full text-center py-24">
                 <div className="w-12 h-12 border-2 border-secondary/20 border-t-secondary rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-xs uppercase tracking-widest font-bold text-primary/40">Préparation de la présentation...</p>
@@ -114,7 +129,7 @@ export default function Home() {
 
       {/* Service Banner */}
       <section className="py-20 bg-primary text-background-warm mt-auto">
-        <div className="container mx-auto px-6 lg:px-12 grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left divider-x">
+        <div className="container mx-auto px-6 lg:px-12 grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left">
            <div className="md:pr-8">
              <Star className="w-6 h-6 text-secondary mb-6 mx-auto md:mx-0 opacity-80" />
              <h4 className="text-sm font-serif mb-3 text-secondary italic">Paiement Local</h4>
@@ -123,7 +138,7 @@ export default function Home() {
              </p>
            </div>
            
-           <div className="md:px-8 border-t md:border-t-0 md:border-l border-white/20 pt-12 md:pt-0">
+           <div className="md:px-8 border-t md:border-t-0 md:border-l border-white/10 pt-12 md:pt-0">
              <Star className="w-6 h-6 text-secondary mb-6 mx-auto md:mx-0 opacity-80" />
              <h4 className="text-sm font-serif mb-3 text-secondary italic">Partenariat Exclusif</h4>
              <p className="text-[11px] uppercase tracking-widest font-light text-white/70 leading-relaxed text-balance">
@@ -136,7 +151,7 @@ export default function Home() {
              </div>
            </div>
 
-           <div className="md:pl-8 border-t md:border-t-0 md:border-l border-white/20 pt-12 md:pt-0">
+           <div className="md:pl-8 border-t md:border-t-0 md:border-l border-white/10 pt-12 md:pt-0">
              <Star className="w-6 h-6 text-secondary mb-6 mx-auto md:mx-0 opacity-80" />
              <h4 className="text-sm font-serif mb-3 text-secondary italic">Service Client</h4>
              <p className="text-[11px] uppercase tracking-widest font-light text-white/70 leading-relaxed text-balance">

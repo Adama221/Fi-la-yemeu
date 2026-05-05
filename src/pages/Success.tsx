@@ -2,11 +2,15 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Package, ArrowRight, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatPrice } from '../lib/utils';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Success() {
   const [searchParams] = useSearchParams();
   const amount = searchParams.get('amount') || '65000';
   const method = searchParams.get('method') || 'orange';
+
+  const { profile } = useAuth();
+  const firstName = profile?.full_name?.split(' ')[0] || 'Inconnu';
 
   return (
     <div className="py-24 bg-background-warm min-h-screen">
@@ -22,7 +26,7 @@ export default function Success() {
              </div>
           </div>
 
-          <h1 className="text-6xl font-serif font-bold uppercase tracking-tight mb-4 text-primary italic">Merci Pape!</h1>
+          <h1 className="text-6xl font-serif font-bold uppercase tracking-tight mb-4 text-primary italic">Merci {firstName}!</h1>
           <p className="text-secondary uppercase tracking-[0.4em] text-[10px] font-bold mb-16">Votre commande est confirmée</p>
 
           <div className="bg-accent-soft/20 p-10 rounded-[2.5rem] space-y-8 mb-16 text-left border border-secondary/10">
