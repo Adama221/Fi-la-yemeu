@@ -9,6 +9,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { initDb } from './src/database.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { setupMcpServer } from './src/mcp.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 
 dotenv.config();
 
@@ -282,12 +284,28 @@ async function startServer() {
 
   // ====================== ORDER ======================
   app.post('/api/orders', async (req, res) => {
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        if (token === 'mock-token-pape') {
+          userId = 1;
+        } else {
+          const decoded = jwt.verify(token, JWT_SECRET) as any;
+          userId = decoded.id;
+        }
+      } catch (e) {
+        // ignore invalid token for order creation
+      }
+    }
+
     const { total, status, method, items, customer, affiliate_code } = req.body;
     try {
       await db.run('BEGIN TRANSACTION');
       const result = await db.run(
-        'INSERT INTO orders (total, status, method, items_json, customer_json, affiliate_code) VALUES (?, ?, ?, ?, ?, ?)', 
-        [total, status, method, JSON.stringify(items), JSON.stringify(customer), affiliate_code || null]
+        'INSERT INTO orders (user_id, total, status, method, items_json, customer_json, affiliate_code) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+        [userId, total, status, method, JSON.stringify(items), JSON.stringify(customer), affiliate_code || null]
       );
 
       // Decrement stock for each ordered item
@@ -490,6 +508,32 @@ async function startServer() {
     res.json({ settings });
   });
 
+  // ====================== USER ACTIONS ======================
+  app.get('/api/user/profile', authRequired, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const dbUser = await db.get('SELECT id, username, email, role FROM users WHERE id = ?', [user.id]);
+      res.json(dbUser);
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/user/orders', authRequired, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const ordersData = await db.all('SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC', [user.id]);
+      const orders = ordersData.map(o => ({
+         ...o,
+         items: JSON.parse(o.items_json || '[]'),
+         customer: JSON.parse(o.customer_json || '{}')
+      }));
+      res.json({ orders });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // ====================== DASHBOARD ======================
   app.get('/api/admin/dashboard', adminRequired, async (req, res) => {
     const products = await db.get('SELECT COUNT(*) as count FROM products');
@@ -505,6 +549,23 @@ async function startServer() {
     });
   });
 
+  // ====================== MCP Server ======================
+  const mcpServer = await setupMcpServer();
+  let transport: SSEServerTransport | null = null;
+
+  app.get('/mcp/messages', async (req, res) => {
+    transport = new SSEServerTransport('/mcp/messages', res);
+    await mcpServer.connect(transport);
+  });
+
+  app.post('/mcp/messages', async (req, res) => {
+    if (transport) {
+      await transport.handlePostMessage(req, res);
+    } else {
+      res.status(400).send('MCP not initialized yet, call GET /mcp/messages first');
+    }
+  });
+
   // API Routes
   app.get('/api/health', (req, res) => {
     res.json({ 
@@ -512,7 +573,7 @@ async function startServer() {
       timestamp: new Date().toISOString(),
       tech_info: {
         admin_default: 'pape@samabutik.com / Pape2210',
-        supabase_redirect: 'https://toxpzpxvowuduixhaxzq.supabase.co/auth/v1/callback'
+        supabase_redirect: 'https://tepsspmrqgvkzxzfbrcx.supabase.co/auth/v1/callback'
       }
     });
   });

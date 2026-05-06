@@ -114,7 +114,7 @@ export default function Register() {
            console.log('Supabase OAuth not configured, using local mock...');
            setConfigHelp({
              siteUrl: window.location.origin,
-             callbackUrl: 'https://toxpzpxvowuduixhaxzq.supabase.co/auth/v1/callback'
+             callbackUrl: 'https://tepsspmrqgvkzxzfbrcx.supabase.co/auth/v1/callback'
            });
 
            const res = await fetch('/api/auth/google', {
@@ -311,7 +311,7 @@ export default function Register() {
                     </div>
                     <div>
                       <p className="text-[7px] uppercase text-stone-400 font-bold mb-1">Redirect URI:</p>
-                      <code className="text-[9px] block bg-white p-2 rounded border border-stone-100 break-all select-all">https://toxpzpxvowuduixhaxzq.supabase.co/auth/v1/callback</code>
+                      <code className="text-[9px] block bg-white p-2 rounded border border-stone-100 break-all select-all">https://tepsspmrqgvkzxzfbrcx.supabase.co/auth/v1/callback</code>
                     </div>
                  </div>
               </motion.div>

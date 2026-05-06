@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CreditCard, Wallet, Smartphone, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { formatPrice } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
+  const { profile, user } = useAuth();
   const navigate = useNavigate();
   const [method, setMethod] = useState<'orange' | 'wave' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,6 +22,20 @@ export default function Checkout() {
     telephone: '',
     email: ''
   });
+
+  useEffect(() => {
+    if (profile || user) {
+      const fullName = profile?.full_name || user?.user_metadata?.full_name || '';
+      const [prenom, ...nomParts] = fullName.split(' ');
+      setCustomerInfo(prev => ({
+        ...prev,
+        prenom: prenom || '',
+        nom: nomParts.join(' ') || '',
+        email: user?.email || '',
+        // adresse and telephone might need to be fetched from a more detailed profile if available
+      }));
+    }
+  }, [profile, user]);
 
   const createOrder = async (payMethod: string) => {
     try {

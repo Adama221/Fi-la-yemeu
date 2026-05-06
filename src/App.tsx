@@ -13,6 +13,7 @@ import AffiliateDashboard from './pages/AffiliateDashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Success from './pages/Success';
+import Profile from './pages/Profile';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AdminRoute from './components/AdminRoute';
@@ -50,6 +51,7 @@ export default function App() {
 
               {/* Affiliate Dashboard */}
               <Route path="/affiliate" element={<AffiliateDashboard />} />
+              <Route path="/profile" element={<Profile />} />
 
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />

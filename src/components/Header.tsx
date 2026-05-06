@@ -48,6 +48,7 @@ export default function Header() {
           <Link to="/" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>La Boutique</Link>
           <Link to="/home" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/home' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>Découvrir</Link>
           {isAdmin && <Link to="/admin" className="text-[10px] uppercase tracking-[0.2em] font-semibold text-secondary hover:text-primary transition-colors duration-300 pb-1 border-b border-transparent">Administration</Link>}
+          {user && <Link to="/profile" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/profile' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>Profil</Link>}
           {user && !isAdmin && <Link to="/affiliate" className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 pb-1 border-b ${location.pathname === '/affiliate' ? 'text-primary border-primary' : 'text-primary/60 border-transparent hover:text-primary hover:border-primary/50'}`}>Affiliation</Link>}
         </nav>
 
@@ -75,10 +76,10 @@ export default function Header() {
 
           {user ? (
             <div className="hidden sm:flex items-center gap-4">
-               <div className="text-right flex flex-col justify-center">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary leading-none mb-1">{profile?.full_name || user.user_metadata?.full_name || 'Client'}</p>
+               <Link to="/profile" className="text-right flex flex-col justify-center group/user cursor-pointer">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary leading-none mb-1 group-hover/user:text-secondary transition-colors">{profile?.full_name || user.user_metadata?.full_name || 'Client'}</p>
                   <p className="text-[8px] uppercase tracking-wider text-secondary font-medium leading-none">{profile?.role || 'Membre'}</p>
-               </div>
+               </Link>
                <button onClick={() => logout()} className="w-10 h-10 rounded-full border border-primary/20 flex items-center justify-center hover:bg-primary hover:text-white transition-all hover:border-primary group">
                   <LogOut className="w-4 h-4 text-primary group-hover:text-white" />
                </button>
@@ -111,6 +112,7 @@ export default function Header() {
                 {itemsCount > 0 && <span className="bg-secondary text-white text-[10px] w-6 h-6 rounded-full flex items-center justify-center">{itemsCount}</span>}
               </Link>
               {isAdmin && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="text-2xl font-serif text-secondary border-b border-primary/10 pb-4">Administration</Link>}
+              {user && <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="text-2xl font-serif text-primary border-b border-primary/10 pb-4">Mon Profil</Link>}
               {user && !isAdmin && <Link to="/affiliate" onClick={() => setIsMenuOpen(false)} className="text-2xl font-serif text-secondary border-b border-primary/10 pb-4">Affiliation</Link>}
               {user ? (
                  <div className="pt-4 flex justify-between items-center">
