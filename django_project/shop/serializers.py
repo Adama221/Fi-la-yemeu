@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Category, Product, Order, Affiliate, Commission, SiteSettings, PaymentConfig
+from .models import Product, Order, Affiliate, Commission, SiteSettings, PaymentConfig
 
 User = get_user_model()
 

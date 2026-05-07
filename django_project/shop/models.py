@@ -6,16 +6,11 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='client')
     
     def save(self, *args, **kwargs):
-        if self.email in ['papesamabutik@gmail.com', '78177233ds@gmail.com', 'pape@samabutik.com']:
+        if self.email and self.email.lower().strip() in ['papesamabutik@gmail.com', '78177233ds@gmail.com', 'pape@samabutik.com']:
             self.role = 'admin'
             self.is_staff = True
             self.is_superuser = True
         super().save(*args, **kwargs)
-
-class Category(models.Model):
-    name = models.CharField(max_length=100)
-    slug = models.SlugField(unique=True)
-    def __str__(self): return self.name
 
 class Product(models.Model):
     name = models.CharField(max_length=200)
@@ -25,7 +20,7 @@ class Product(models.Model):
     low_stock_threshold = models.IntegerField(default=5)
     commission = models.DecimalField(max_digits=5, decimal_places=2, default=10.0) # percentage
     image = models.ImageField(upload_to='products/', null=True, blank=True)
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
+    category = models.CharField(max_length=100, null=True, blank=True)
     is_published = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self): return self.name

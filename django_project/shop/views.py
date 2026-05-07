@@ -265,7 +265,16 @@ def admin_affiliates(request):
 @api_view(['POST'])
 @permission_classes([permissions.IsAdminUser])
 def admin_product_create(request):
-    serializer = ProductSerializer(data=request.data, context={'request': request})
+    data = request.data.copy()
+    if 'image' in data and not hasattr(data['image'], 'read'):
+        data.pop('image')
+    
+    # Handle boolean conversion
+    for key in ['is_published']:
+        if key in data:
+            data[key] = str(data[key]).lower() in ['true', '1', 't', 'y', 'yes']
+
+    serializer = ProductSerializer(data=data, context={'request': request})
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
@@ -278,7 +287,17 @@ def admin_product_update(request, pk):
         product = Product.objects.get(pk=pk)
     except Product.DoesNotExist:
         return Response(status=404)
-    serializer = ProductSerializer(product, data=request.data, partial=True, context={'request': request})
+        
+    data = request.data.copy()
+    if 'image' in data and not hasattr(data['image'], 'read'):
+        data.pop('image')
+        
+    # Handle boolean conversion
+    for key in ['is_published']:
+        if key in data:
+            data[key] = str(data[key]).lower() in ['true', '1', 't', 'y', 'yes']
+
+    serializer = ProductSerializer(product, data=data, partial=True, context={'request': request})
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
