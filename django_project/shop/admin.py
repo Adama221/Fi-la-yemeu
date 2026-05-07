@@ -1,8 +1,7 @@
 from django.contrib import admin
-from .models import User, Category, Product, Order, Affiliate, Commission, SiteSettings, PaymentConfig
+from .models import User, Product, Order, Affiliate, Commission, SiteSettings, PaymentConfig
 
 admin.site.register(User)
-admin.site.register(Category)
 admin.site.register(Product)
 
 @admin.register(Order)
