@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Package, ShoppingCart, Users, BadgePercent, LogOut, ChevronRight, TrendingUp, DollarSign, PackageCheck, AlertCircle, Plus, Search, Filter, MoreVertical, X, Palette, CreditCard, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, BadgePercent, LogOut, ChevronRight, TrendingUp, DollarSign, PackageCheck, AlertCircle, Plus, Search, Filter, MoreVertical, X, Palette, Pen, CreditCard, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatPrice } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,6 +37,14 @@ export default function AdminDashboard() {
 
   const [affiliates, setAffiliates] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const [notification, setNotification] = useState<{message: string, isError: boolean} | null>(null);
+  const [productToDelete, setProductToDelete] = useState<string | number | null>(null);
+
+  const showNotification = (message: string, isError = false) => {
+    setNotification({ message, isError });
+    setTimeout(() => setNotification(null), 3500);
+  };
 
   const [statsData, setStatsData] = useState({ products: 0, orders: 0, revenue: 0, commissions: 0 });
 
@@ -121,11 +129,15 @@ export default function AdminDashboard() {
     fetchData();
   }, [isAdmin]);
 
-  const handleDeleteProduct = async (id: string | number) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
+  const handleDeleteProduct = (id: string | number) => {
+    setProductToDelete(id);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
 
     try {
-      const res = await fetch(`/api/admin/products/${id}`, {
+      const res = await fetch(`/api/admin/products/${productToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
       });
@@ -135,10 +147,13 @@ export default function AdminDashboard() {
          throw new Error(`Erreur de suppression: ${res.status} ${text}`);
       }
 
+      showNotification('Produit supprimé !');
       await fetchData();
     } catch (error: any) {
-      alert("Erreur: " + error.message);
+      showNotification("Erreur: " + error.message, true);
       console.error("Erreur: " + error.message);
+    } finally {
+      setProductToDelete(null);
     }
   };
 
@@ -167,10 +182,10 @@ export default function AdminDashboard() {
         homepageText: branding.text
       });
       
-      alert('Design modifié avec succès');
+      showNotification('Design modifié avec succès');
     } catch (e: any) {
       console.error(e);
-      alert('Erreur: ' + e.message);
+      showNotification('Erreur: ' + e.message, true);
     }
   };
 
@@ -192,10 +207,10 @@ export default function AdminDashboard() {
       
       if (!res.ok) throw new Error("Erreur serveur");
 
-      alert('Paramètres de paiement mis à jour');
+      showNotification('Paramètres de paiement mis à jour');
     } catch (e) {
       console.error(e);
-      alert('Erreur lors de la mise à jour des paiements');
+      showNotification('Erreur lors de la mise à jour des paiements', true);
     }
   };
 
@@ -219,9 +234,8 @@ export default function AdminDashboard() {
       }
       
       if (productImageFiles.length > 0) {
-        productImageFiles.forEach((file) => {
-          formData.append('image', file);
-        });
+        // Backend only supports upload.single('image') because schema has a single image field
+        formData.append('image', productImageFiles[0]);
       } else if (productImage) {
         formData.append('image_url', productImage);
       }
@@ -238,7 +252,7 @@ export default function AdminDashboard() {
 
       setIsAddProductOpen(false);
       setEditingProduct(null);
-      alert(editingProduct ? 'Produit modifié!' : 'Produit ajouté!');
+      showNotification(editingProduct ? 'Produit modifié!' : 'Produit ajouté!');
       setProductName('');
       setProductPrice('');
       setProductDescription('');
@@ -252,7 +266,7 @@ export default function AdminDashboard() {
     } catch (error: any) {
       console.error(error);
       const details = error.response ? JSON.stringify(error.response) : error.message;
-      alert("Erreur: " + details);
+      showNotification("Erreur: " + details, true);
     } finally {
       setIsAddingProduct(false);
     }
@@ -277,7 +291,7 @@ export default function AdminDashboard() {
   };
 
   const handleExport = () => {
-    alert('Préparation de l\'exportation CSV... Le téléchargement commencera sous peu.');
+    showNotification('Préparation de l\'exportation CSV... Le téléchargement commencera sous peu.');
   };
 
   const stats = [
@@ -611,7 +625,7 @@ export default function AdminDashboard() {
                             className="p-3 bg-white border border-primary/5 hover:bg-secondary hover:text-white rounded-2xl transition-all duration-300 shadow-sm text-primary/60 group"
                             title="Modifier"
                           >
-                             <Palette className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                             <Pen className="w-4 h-4 group-hover:scale-110 transition-transform" />
                           </button>
                           <button 
                             onClick={() => handleDeleteProduct(item.id)}
@@ -1003,21 +1017,21 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="space-y-4">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Visuels Produit (Jusqu'à 10 images)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Visuel Produit</label>
                     <input 
                       type="file" 
                       accept="image/*"
-                      multiple
                       className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans text-sm text-primary/80" 
                       onChange={e => {
                         if (e.target.files && e.target.files.length > 0) {
-                           const filesArray = Array.from(e.target.files).slice(0, 10);
-                           setProductImageFiles(filesArray);
+                           setProductImageFiles([e.target.files[0]]);
+                        } else {
+                           setProductImageFiles([]);
                         }
                       }} 
                     />
                     {productImageFiles.length > 0 && (
-                      <p className="text-xs text-primary/60">{productImageFiles.length} image(s) sélectionnée(s)</p>
+                      <p className="text-xs text-primary/60">Image sélectionnée</p>
                     )}
                   </div>
 
@@ -1031,6 +1045,59 @@ export default function AdminDashboard() {
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {productToDelete && (
+          <>
+            <div 
+              className="fixed inset-0 bg-background-warm/80 backdrop-blur-sm z-[60]"
+              onClick={() => setProductToDelete(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-[2rem] shadow-2xl p-8 z-[70] text-center"
+            >
+              <Trash2 className="w-12 h-12 text-red-500 mx-auto mb-6 opacity-80" />
+              <h3 className="text-xl font-serif italic text-primary/80 mb-2">Confirmation de suppression</h3>
+              <p className="text-sm text-primary/60 mb-8">Êtes-vous sûr de vouloir supprimer ce produit définitivement ?</p>
+              <div className="flex gap-4 text-[10px] uppercase tracking-widest font-bold">
+                <button 
+                  onClick={() => setProductToDelete(null)}
+                  className="flex-1 py-4 bg-background-warm border-primary/5 rounded-2xl text-primary/60 hover:bg-gray-100 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button 
+                  onClick={confirmDeleteProduct}
+                  className="flex-1 py-4 bg-red-500 text-white rounded-2xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
+                >
+                  Supprimer
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Notification Toast */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full shadow-2xl z-[100] text-sm font-bold tracking-wide flex items-center gap-3 ${
+              notification.isError ? 'bg-red-500 text-white shadow-red-500/30' : 'bg-primary text-secondary shadow-primary/30'
+            }`}
+          >
+            {notification.isError ? <AlertCircle className="w-5 h-5" /> : <PackageCheck className="w-5 h-5" />}
+            {notification.message}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
