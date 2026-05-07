@@ -83,8 +83,8 @@ export default function ProductDetail() {
           {/* Content */}
           <div className="flex flex-col pt-8 lg:pt-16">
             <span className="text-[10px] uppercase tracking-[0.3em] font-medium text-primary/60 mb-6 font-sans">{product.category || 'Collection Exclusive'}</span>
-            <h1 className="text-4xl md:text-6xl font-serif text-primary leading-tight tracking-tight mb-6">{product.name}</h1>
-            <p className="text-2xl font-sans font-light text-text-deep uppercase tracking-wider mb-12">{formatPrice(product.price)}</p>
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-serif text-primary leading-tight tracking-tight mb-4 md:mb-6">{product.name}</h1>
+            <p className="text-xl sm:text-2xl font-sans font-light text-text-deep uppercase tracking-wider mb-8 md:mb-12">{formatPrice(product.price)}</p>
             
             <div className="mb-16">
                <p className="text-text-deep/80 leading-relaxed text-sm md:text-base font-light font-sans">{product.description}</p>

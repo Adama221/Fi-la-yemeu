@@ -1,0 +1,14 @@
+[Unit]
+Description=gunicorn daemon for samabutik
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/samabutik/django_project
+Environment="PATH=/var/www/samabutik/venv/bin"
+EnvironmentFile=/var/www/samabutik/.env
+ExecStart=/var/www/samabutik/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/var/www/samabutik/django_project/samabutik.sock core.wsgi:application
+
+[Install]
+WantedBy=multi-user.target

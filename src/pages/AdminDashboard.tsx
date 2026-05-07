@@ -288,73 +288,73 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-background-warm flex font-sans">
+    <div className="min-h-screen bg-background-warm flex flex-col md:flex-row font-sans w-full overflow-x-hidden">
       {/* Sidebar */}
-      <aside className="w-80 bg-primary text-background-warm flex flex-col pt-12 shadow-2xl z-10">
-        <div className="px-10 mb-16">
-           <h2 className="text-3xl font-serif font-bold tracking-tight text-white mb-1">Console</h2>
+      <aside className="w-full md:w-80 bg-primary text-background-warm flex flex-col pt-8 md:pt-12 md:shadow-2xl z-10 flex-shrink-0">
+        <div className="px-6 md:px-10 mb-8 md:mb-16">
+           <h2 className="text-2xl md:text-3xl font-serif font-bold tracking-tight text-white mb-1">Console</h2>
            <p className="text-[10px] text-white/40 uppercase tracking-[0.4em] font-bold">SAMA BUTIK ADMIN</p>
         </div>
 
-        <nav className="flex-grow px-6 space-y-3">
+        <nav className="flex md:flex-col overflow-x-auto md:overflow-x-visible px-4 md:px-6 md:space-y-3 pb-4 md:pb-0 gap-2 md:gap-0 no-scrollbar">
           <button 
             onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'dashboard' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'dashboard' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
-             <div className="flex items-center gap-4"><LayoutDashboard className="w-4 h-4" /> Dashboard</div>
-             <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === 'dashboard' ? 'rotate-90' : 'opacity-20'}`} />
+             <div className="flex items-center gap-2 md:gap-4"><LayoutDashboard className="w-4 h-4" /> <span className="hidden sm:inline">Dashboard</span></div>
+             <ChevronRight className={`hidden md:block w-4 h-4 transition-transform ${activeTab === 'dashboard' ? 'rotate-90' : 'opacity-20'}`} />
           </button>
           
           <button 
             onClick={() => setActiveTab('products')}
-            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'products' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'products' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
-             <div className="flex items-center gap-4"><Package className="w-4 h-4" /> Produits</div>
-             <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === 'products' ? 'rotate-90' : 'opacity-20'}`} />
+             <div className="flex items-center gap-2 md:gap-4"><Package className="w-4 h-4" /> <span className="hidden sm:inline">Produits</span></div>
+             <ChevronRight className={`hidden md:block w-4 h-4 transition-transform ${activeTab === 'products' ? 'rotate-90' : 'opacity-20'}`} />
           </button>
 
           <button 
             onClick={() => setActiveTab('orders')}
-            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'orders' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'orders' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
-             <div className="flex items-center gap-4"><ShoppingCart className="w-4 h-4" /> Commandes</div>
-             <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === 'orders' ? 'rotate-90' : 'opacity-20'}`} />
+             <div className="flex items-center gap-2 md:gap-4"><ShoppingCart className="w-4 h-4" /> <span className="hidden sm:inline">Commandes</span></div>
+             <ChevronRight className={`hidden md:block w-4 h-4 transition-transform ${activeTab === 'orders' ? 'rotate-90' : 'opacity-20'}`} />
           </button>
 
           <button 
             onClick={() => setActiveTab('affiliates')}
-            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'affiliates' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'affiliates' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
-             <div className="flex items-center gap-4"><Users className="w-4 h-4" /> Affiliés</div>
-             <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === 'affiliates' ? 'rotate-90' : 'opacity-20'}`} />
+             <div className="flex items-center gap-2 md:gap-4"><Users className="w-4 h-4" /> <span className="hidden sm:inline">Affiliés</span></div>
+             <ChevronRight className={`hidden md:block w-4 h-4 transition-transform ${activeTab === 'affiliates' ? 'rotate-90' : 'opacity-20'}`} />
           </button>
 
           <button 
             onClick={() => setActiveTab('commissions')}
-            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'commissions' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'commissions' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
-             <div className="flex items-center gap-4"><BadgePercent className="w-4 h-4" /> Commissions</div>
-             <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === 'commissions' ? 'rotate-90' : 'opacity-20'}`} />
+             <div className="flex items-center gap-2 md:gap-4"><BadgePercent className="w-4 h-4" /> <span className="hidden sm:inline">Commissions</span></div>
+             <ChevronRight className={`hidden md:block w-4 h-4 transition-transform ${activeTab === 'commissions' ? 'rotate-90' : 'opacity-20'}`} />
           </button>
 
           <button 
             onClick={() => setActiveTab('branding')}
-            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'branding' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'branding' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
-             <div className="flex items-center gap-4"><Palette className="w-4 h-4" /> Design</div>
-             <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === 'branding' ? 'rotate-90' : 'opacity-20'}`} />
+             <div className="flex items-center gap-2 md:gap-4"><Palette className="w-4 h-4" /> <span className="hidden sm:inline">Design</span></div>
+             <ChevronRight className={`hidden md:block w-4 h-4 transition-transform ${activeTab === 'branding' ? 'rotate-90' : 'opacity-20'}`} />
           </button>
 
           <button 
             onClick={() => setActiveTab('payments')}
-            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'payments' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+            className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'payments' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
-             <div className="flex items-center gap-4"><CreditCard className="w-4 h-4" /> Paiements</div>
-             <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === 'payments' ? 'rotate-90' : 'opacity-20'}`} />
+             <div className="flex items-center gap-2 md:gap-4"><CreditCard className="w-4 h-4" /> <span className="hidden sm:inline">Paiements</span></div>
+             <ChevronRight className={`hidden md:block w-4 h-4 transition-transform ${activeTab === 'payments' ? 'rotate-90' : 'opacity-20'}`} />
           </button>
         </nav>
 
-        <div className="p-8 mt-auto border-t border-white/5">
+        <div className="hidden md:block p-8 mt-auto border-t border-white/5">
            <button 
              onClick={handleLogout}
              className="w-full flex items-center gap-4 px-6 py-4 text-white/40 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-[0.2em]"
@@ -365,35 +365,36 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-grow p-16 overflow-y-auto">
-        <header className="flex justify-between items-end mb-16">
-           <div className="space-y-4">
+      <main className="flex-grow p-6 md:p-16 overflow-y-auto w-full">
+        <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end mb-10 md:mb-16 gap-6">
+           <div className="space-y-2 md:space-y-4">
               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-white text-md font-bold font-serif italic">{profile?.full_name?.[0] || 'U'}</div>
+                 <div className="w-8 h-8 md:w-10 md:h-10 bg-secondary rounded-full flex items-center justify-center text-white text-md font-bold font-serif italic">{profile?.full_name?.[0] || 'U'}</div>
                  <p className="text-[10px] text-primary font-bold uppercase tracking-[0.4em]">Bienvenue, {profile?.full_name || 'Utilisateur'}</p>
+                 <button onClick={handleLogout} className="md:hidden ml-auto text-primary/40"><LogOut className="w-4 h-4"/></button>
               </div>
-              <h1 className="text-6xl font-serif font-bold uppercase tracking-tight text-primary italic">
+              <h1 className="text-4xl md:text-6xl font-serif font-bold uppercase tracking-tight text-primary italic break-words">
                 {activeTab === 'dashboard' ? 'Vue d\'ensemble' : activeTab === 'payments' ? 'Paiements' : activeTab === 'branding' ? 'Design' : activeTab}
               </h1>
            </div>
-           <div className="flex gap-6">
+           <div className="flex flex-wrap gap-4 w-full xl:w-auto">
               {error && (
                 <button 
                   onClick={fetchData}
-                  className="bg-red-50 text-red-500 border border-red-200 px-8 py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2 shadow-sm"
+                  className="bg-red-50 text-red-500 border border-red-200 px-6 py-3 md:px-8 md:py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2 shadow-sm w-full sm:w-auto justify-center"
                 >
                   <AlertCircle className="w-4 h-4" /> Réessayer
                 </button>
               )}
               <button 
                 onClick={handleExport}
-                className="bg-white border border-primary/10 px-8 py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-secondary hover:text-white transition-all shadow-sm"
+                className="bg-white border border-primary/10 px-6 py-3 md:px-8 md:py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-secondary hover:text-white transition-all shadow-sm flex-grow sm:flex-grow-0 text-center"
               >
-                Exporter Rapports
+                Exporter
               </button>
               <button 
                 onClick={() => setIsAddProductOpen(true)}
-                className="bg-primary text-white px-8 py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-secondary transition-all shadow-lg"
+                className="bg-primary text-white px-6 py-3 md:px-8 md:py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-secondary transition-all shadow-lg flex-grow sm:flex-grow-0 text-center whitespace-nowrap"
               >
                 + Nouveau Produit
               </button>
@@ -955,10 +956,10 @@ export default function AdminDashboard() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed right-0 top-0 bottom-0 w-full max-w-xl bg-background-warm shadow-2xl z-50 overflow-y-auto"
             >
-              <div className="p-12">
-                <div className="flex justify-between items-center mb-12">
-                  <h2 className="text-4xl font-serif font-bold text-primary italic">{editingProduct ? 'Modifier Produit' : 'Nouveau Produit'}</h2>
-                  <button onClick={() => { setIsAddProductOpen(false); setEditingProduct(null); }} className="p-3 hover:bg-accent-soft rounded-full transition-colors text-primary">
+              <div className="p-6 sm:p-10 md:p-12">
+                <div className="flex justify-between items-center mb-8 md:mb-12">
+                  <h2 className="text-3xl md:text-4xl font-serif font-bold text-primary italic">{editingProduct ? 'Modifier Produit' : 'Nouveau Produit'}</h2>
+                  <button onClick={() => { setIsAddProductOpen(false); setEditingProduct(null); }} className="p-2 md:p-3 hover:bg-accent-soft rounded-full transition-colors text-primary">
                     <X className="w-6 h-6" />
                   </button>
                 </div>
@@ -969,24 +970,24 @@ export default function AdminDashboard() {
                     <input type="text" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-serif text-lg text-primary italic" placeholder="ex: Boubou Prestige Indigo" required value={productName} onChange={e => setProductName(e.target.value)}/>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Prix (FCFA)</label>
-                      <input type="number" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="65000" required value={productPrice} onChange={e => setProductPrice(e.target.value)}/>
+                      <input type="number" className="w-full bg-white border border-primary/10 p-4 font-sans font-bold text-primary" placeholder="65000" required value={productPrice} onChange={e => setProductPrice(e.target.value)}/>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Commission Affilié (%)</label>
-                      <input type="number" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="10" value={productCommission} onChange={e => setProductCommission(e.target.value)}/>
+                      <input type="number" className="w-full bg-white border border-primary/10 p-4 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="10" value={productCommission} onChange={e => setProductCommission(e.target.value)}/>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Stock Disponible</label>
-                      <input type="number" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="0" required value={productStock} onChange={e => setProductStock(e.target.value)}/>
+                      <input type="number" className="w-full bg-white border border-primary/10 p-4 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="0" required value={productStock} onChange={e => setProductStock(e.target.value)}/>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Seuil Alerte (Low Stock)</label>
-                      <input type="number" className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="5" required value={productLowStock} onChange={e => setProductLowStock(e.target.value)}/>
+                      <input type="number" className="w-full bg-white border border-primary/10 p-4 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary" placeholder="5" required value={productLowStock} onChange={e => setProductLowStock(e.target.value)}/>
                     </div>
-                    <div className="space-y-2 col-span-2">
+                    <div className="space-y-2 sm:col-span-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Catégorie</label>
                       <select className="w-full bg-white border border-primary/10 p-5 rounded-2xl focus:ring-2 focus:ring-secondary/20 outline-none font-sans font-bold text-primary appearance-none" value={productCategory} onChange={e => setProductCategory(e.target.value)}>
                         <option>Femme</option>

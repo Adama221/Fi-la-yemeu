@@ -33,44 +33,23 @@ export default function Login() {
     setError('');
 
     try {
-      // 1. Try Supabase Auth Login
-      const { data, error: sbError } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: email, password })
       });
 
-      // 2. If Supabase fails, try local backend
-      if (sbError) {
-        console.log('Supabase login failed, trying local fallback...', sbError.message);
-        
-        try {
-          const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identity: email, password })
-          });
-
-          if (!res.ok) {
-             const errData = await res.json().catch(() => ({ error: 'Identifiants incorrects.' }));
-             throw new Error(errData.error || 'Identifiants incorrects.');
-          }
-
-          const localData = await res.json();
-          await login(localData.user, localData.token);
-        } catch (fetchErr: any) {
-          if (fetchErr.message === 'Failed to fetch' || fetchErr.name === 'AbortError') {
-             throw new Error("Impossible de contacter le serveur Sama Butik. Vérifiez votre connexion.");
-          }
-          throw fetchErr;
-        }
-      } else {
-        // Supabase login success
-        await login(data.user, data.session?.access_token || '');
+      if (!res.ok) {
+         const errData = await res.json().catch(() => ({ error: 'Identifiants incorrects.' }));
+         throw new Error(errData.error || 'Identifiants incorrects.');
       }
+
+      const localData = await res.json();
+      await login(localData.user, localData.token);
     } catch (err: any) {
       console.error('Login Error:', err);
       if (err.name === 'AbortError' || err.message === 'Failed to fetch') {
-         setError("Le serveur est injoignable. Le service redémarre peut-être.");
+         setError("Impossible de contacter le serveur Sama Butik. Vérifiez votre connexion.");
       } else {
          setError(err.message);
       }
@@ -84,43 +63,19 @@ export default function Login() {
     setError('');
 
     try {
-      const { error: sbError } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin }
-      });
-      
-      if (sbError) {
-        const errorMessage = sbError.message || '';
-        const isConfigError = errorMessage.includes('OAuth secret') || 
-                            errorMessage.includes('not found') || 
-                            errorMessage.includes('provider') ||
-                            (sbError as any).error_code === 'validation_failed' ||
-                            (sbError as any).msg?.includes('OAuth secret');
-
-        if (isConfigError) {
-           console.log('Supabase OAuth not configured, using local mock...');
-           setConfigHelp({
-             siteUrl: window.location.origin,
-             callbackUrl: 'https://tepsspmrqgvkzxzfbrcx.supabase.co/auth/v1/callback'
-           });
-           
-           const res = await fetch('/api/auth/google', {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ email: email || 'pape@samabutik.com' })
-           });
-           
-           if (!res.ok) {
-             const data = await res.json().catch(() => ({}));
-             throw new Error(data.error || 'Erreur auth Google locale');
-           }
-           
-           const data = await res.json();
-           await login(data.user, data.token);
-           return;
-        }
-        throw sbError;
-      }
+       const res = await fetch('/api/auth/google', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ email: email || 'pape@samabutik.com' })
+       });
+       
+       if (!res.ok) {
+         const data = await res.json().catch(() => ({}));
+         throw new Error(data.error || 'Erreur auth Google locale');
+       }
+       
+       const data = await res.json();
+       await login(data.user, data.token);
     } catch (err: any) {
       console.error('Google login error:', err);
       if (err.name === 'AbortError' || err.message === 'Failed to fetch') {

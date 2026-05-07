@@ -43,13 +43,13 @@ export default function Checkout() {
       const res = await fetch('/api/orders', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
-         body: JSON.stringify({
-            customer: customerInfo,
-            items,
+          body: JSON.stringify({
+            customer_info: customerInfo,
+            items_json: items,
             total,
-            method: payMethod,
+            payment_method: payMethod === 'orange' ? 'orange_money' : 'wave',
             affiliate_code: affiliateCode,
-            status: payMethod === 'orange' ? 'EFFECTUÉ' : 'VÉRIFICATION'
+            status: payMethod === 'orange' ? 'payé' : 'en_attente'
          })
       });
       if (!res.ok) throw new Error("Could not create order");

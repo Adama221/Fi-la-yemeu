@@ -32,48 +32,23 @@ export default function Register() {
     const assignedRole = email.includes('pape') ? 'admin' : (role || 'client');
     
     try {
-      // 1. Try Supabase Auth Signup
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            role: assignedRole
-          }
-        }
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name, role: assignedRole })
       });
 
-      // 2. Local Backend Registration
-      try {
-        const res = await fetch('/api/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, name, role: assignedRole })
-        });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Erreur backend' }));
+        throw new Error(errData.error || "Erreur lors de l'inscription");
+      }
 
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({ error: 'Erreur backend' }));
-          if (authError) throw new Error(errData.error || authError.message);
-          throw new Error(errData.error || "Erreur lors de l'inscription");
-        }
+      const localData = await res.json().catch(() => null);
 
-        const localData = await res.json().catch(() => null);
-
-        if (authData.user) {
-          const sessionToken = (await supabase.auth.getSession()).data.session?.access_token || '';
-          await login(authData.user, sessionToken);
-        } else if (localData && localData.user) {
-          await login(localData.user, localData.token);
-        } else {
-          if (authError) throw authError;
-          throw new Error("Impossible de créer le compte.");
-        }
-      } catch (fetchErr: any) {
-        if (fetchErr.message === 'Failed to fetch' || fetchErr.name === 'AbortError') {
-           throw new Error("Serveur inaccessible pour l'inscription. Vérifiez votre connexion.");
-        }
-        throw fetchErr;
+      if (localData && localData.user && localData.token) {
+        await login(localData.user, localData.token);
+      } else {
+        throw new Error("Impossible de créer le compte.");
       }
 
       if (role === 'affiliate') {
@@ -84,7 +59,11 @@ export default function Register() {
 
     } catch (err: any) {
       console.error(err);
-      setError("Erreur : " + err.message);
+      if (err.name === 'AbortError' || err.message === 'Failed to fetch') {
+         setError("Serveur inaccessible pour l'inscription. Vérifiez votre connexion.");
+      } else {
+         setError("Erreur : " + err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -95,46 +74,20 @@ export default function Register() {
     setError('');
 
     try {
-      const { error: sbError } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      
-      if (sbError) {
-        const errorMessage = sbError.message || '';
-        const isConfigError = errorMessage.includes('OAuth secret') || 
-                            errorMessage.includes('not found') || 
-                            errorMessage.includes('provider') ||
-                            (sbError as any).error_code === 'validation_failed' ||
-                            (sbError as any).msg?.includes('OAuth secret');
-
-        if (isConfigError) {
-           console.log('Supabase OAuth not configured, using local mock...');
-           setConfigHelp({
-             siteUrl: window.location.origin,
-             callbackUrl: 'https://tepsspmrqgvkzxzfbrcx.supabase.co/auth/v1/callback'
-           });
-
-           const res = await fetch('/api/auth/google', {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ email: email || 'pape@samabutik.com' })
-           });
-           
-           if (!res.ok) {
-             const data = await res.json().catch(() => ({}));
-             throw new Error(data.error || 'Erreur auth Google locale');
-           }
-           
-           const data = await res.json();
-           await login(data.user, data.token);
-           navigate(data.user.role === 'admin' ? '/admin' : '/');
-           return;
-        }
-        throw sbError;
-      }
+       const res = await fetch('/api/auth/google', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ email: email || 'pape@samabutik.com' })
+       });
+       
+       if (!res.ok) {
+         const data = await res.json().catch(() => ({}));
+         throw new Error(data.error || 'Erreur auth Google locale');
+       }
+       
+       const data = await res.json();
+       await login(data.user, data.token);
+       navigate(data.user.role === 'admin' ? '/admin' : '/');
     } catch (err: any) {
       console.error('Registration Google Error:', err);
       if (err.name === 'AbortError' || err.message === 'Failed to fetch') {

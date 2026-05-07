@@ -153,5 +153,22 @@ export async function initDb() {
     await db.run('INSERT INTO site_settings (id) VALUES (1)');
   }
 
+  // Insert Default Products
+  const prodCountRes = await db.get('SELECT COUNT(*) as count FROM products');
+  if (prodCountRes && prodCountRes.count === 0) {
+    await db.run('INSERT INTO products (name, price, description, image, category, commission, stock) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['Robe Éclat', 120000, 'Une robe élégante de soirée en soie', 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80', 'Femme', 10, 15]
+    );
+    await db.run('INSERT INTO products (name, price, description, image, category, commission, stock) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['Costume Minuit', 250000, 'Costume trois pièces sur-mesure', 'https://images.unsplash.com/photo-1593030761756-1d8dd2a7e8bf?auto=format&fit=crop&q=80', 'Homme', 15, 5]
+    );
+    await db.run('INSERT INTO products (name, price, description, image, category, commission, stock) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['Sac Signature Noir', 85000, 'Sac à main en cuir véritable avec finitions dorées', 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?auto=format&fit=crop&q=80', 'Accessoires', 10, 8]
+    );
+    await db.run('INSERT INTO products (name, price, description, image, category, commission, stock) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['Veste d\'Automne', 145000, 'Veste légère et résistante pour la saison', 'https://plus.unsplash.com/premium_photo-1673356301535-224a0efcbdfc?auto=format&fit=crop&q=80', 'Femme', 12, 10]
+    );
+  }
+
   return db;
 }
