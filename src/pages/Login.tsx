@@ -40,8 +40,15 @@ export default function Login() {
       });
 
       if (!res.ok) {
-         const errData = await res.json().catch(() => ({ error: 'Identifiants incorrects.' }));
-         throw new Error(errData.error || 'Identifiants incorrects.');
+         let errorMessage = 'Identifiants incorrects res.ok false.';
+         try {
+           const errData = await res.json();
+           errorMessage = errData.error || errorMessage;
+         } catch {
+           const textData = await res.text();
+           errorMessage = `Erreur Serveur (${res.status}): ` + textData.substring(0, 100);
+         }
+         throw new Error(errorMessage);
       }
 
       const localData = await res.json();

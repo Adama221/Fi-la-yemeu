@@ -17,7 +17,10 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const upload = multer({ dest: path.join(__dirname, 'uploads/') });
+const isVercel = !!process.env.VERCEL;
+const uploadsDir = isVercel ? path.join('/tmp', 'uploads') : path.join(__dirname, 'uploads');
+
+const upload = multer({ dest: uploadsDir });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-pour-samabutik';
 
@@ -30,7 +33,7 @@ async function startServer() {
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-  app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+  app.use('/uploads', express.static(uploadsDir));
 
   app.post('/api/auth/google', async (req, res) => {
     const { email } = req.body;

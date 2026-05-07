@@ -4,8 +4,13 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 
 export async function initDb() {
+  const isVercel = !!process.env.VERCEL;
+  const dbPath = isVercel 
+    ? path.join('/tmp', 'database.sqlite')
+    : path.join(process.cwd(), 'database.sqlite');
+    
   const db = await open({
-    filename: path.join(process.cwd(), 'database.sqlite'),
+    filename: dbPath,
     driver: sqlite3.Database
   });
 
