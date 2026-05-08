@@ -6,12 +6,12 @@ import fs from 'fs';
 export async function initDb() {
   const isVercel = !!process.env.VERCEL;
 
+  let dbPath = path.join(process.cwd(), 'database.sqlite');
+  
   if (isVercel) {
-    console.error("Vercel environment detected. Native SQLite is not supported.");
-    throw new Error("Erreur de chargement du module SQLite. Sur Vercel, utilisez une base de données cloud (ex: Supabase, Neon) plutôt que SQLite.");
+    console.warn("Vercel environment detected. Using /tmp/database.sqlite. Data will be lost on cold starts.");
+    dbPath = path.join('/tmp', 'database.sqlite');
   }
-
-  const dbPath = path.join(process.cwd(), 'database.sqlite');
     
   let sqlite3;
   try {
@@ -150,12 +150,12 @@ export async function initDb() {
   }
 
   // Insert Admin
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Pape2210';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Pape221';
   const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
   
   const admins = [
-    { email: 'pape@samabutik.com', username: 'Pape' },
-    { email: 'papesamabutik@gmail.com', username: 'PapeOld' },
+    { email: 'papesamabutik@gmail.com', username: 'Pape' },
+    { email: 'pape@samabutik.com', username: 'PapeAdmin' },
     { email: '78177233ds@gmail.com', username: '78177233ds' }
   ];
   
@@ -168,9 +168,8 @@ export async function initDb() {
       );
     } else {
       // Ensure role and username are correct even if already exists
-      // Force update password if it's one of the default admins to ensure it matches current default
-      const isDefaultAdmin = admin.email === 'pape@samabutik.com';
-      const needsPasswordUpdate = !user.password.startsWith('$2') || isDefaultAdmin;
+      // Force update password to ensure it matches current default
+      const needsPasswordUpdate = true;
       
       if (needsPasswordUpdate || user.role !== 'admin') {
         await db.run(

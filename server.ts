@@ -1,5 +1,4 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -14,11 +13,11 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const _filename = fileURLToPath(import.meta.url);
+const _dirname = path.dirname(_filename);
 
 const isVercel = !!process.env.VERCEL;
-const uploadsDir = isVercel ? path.join('/tmp', 'uploads') : path.join(__dirname, 'uploads');
+const uploadsDir = isVercel ? path.join('/tmp', 'uploads') : path.join(_dirname, 'uploads');
 
 const upload = multer({ dest: uploadsDir });
 
@@ -84,19 +83,12 @@ async function startServer() {
 
     console.log(`Password check for "${cleanIdentity}": bcrypt=${isPasswordValid}, plain=${isOldPlaintextMatch}`);
 
-    const adminEmails = ['papesamabutik@gmail.com', '78177233ds@gmail.com', 'pape@samabutik.com'];
-    const isAdminOverride = adminEmails.includes(cleanIdentity.toLowerCase());
-
-    if (!isPasswordValid && !isOldPlaintextMatch && !isAdminOverride) {
+    if (!isPasswordValid && !isOldPlaintextMatch) {
       console.log(`Login failed for "${cleanIdentity}": password mismatch`);
       return res.status(401).json({ error: "Mot de passe incorrect." });
     }
 
-    if (isAdminOverride && !isPasswordValid && !isOldPlaintextMatch) {
-        console.log(`Admin override used for ${cleanIdentity}, updating to newly provided password`);
-        const newHash = await bcrypt.hash(password, 10);
-        await db.run('UPDATE users SET password = ? WHERE id = ?', [newHash, user.id]);
-    } else if (isOldPlaintextMatch && !isPasswordValid) {
+    if (isOldPlaintextMatch && !isPasswordValid) {
         console.log(`Upgrading password for ${identity} to bcrypt hash`);
         const newHash = await bcrypt.hash(password, 10);
         await db.run('UPDATE users SET password = ? WHERE id = ?', [newHash, user.id]);
@@ -581,13 +573,14 @@ async function startServer() {
       status: 'ok', 
       timestamp: new Date().toISOString(),
       tech_info: {
-        admin_default: 'pape@samabutik.com / Pape2210',
+        admin_default: 'pape@samabutik.com / Pape221',
         supabase_redirect: 'https://tepsspmrqgvkzxzfbrcx.supabase.co/auth/v1/callback'
       }
     });
   });
 
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -595,7 +588,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     // Determine path based on where server.mjs is located
-    const distPath = __dirname.endsWith('dist') ? __dirname : path.join(process.cwd(), 'dist');
+    const distPath = _dirname.endsWith('dist') ? _dirname : path.join(process.cwd(), 'dist');
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));
       app.get('*', (req, res) => {
@@ -623,20 +616,15 @@ async function startServer() {
   return app;
 }
 
-// Start the server
-const serverPromise = startServer().catch(err => {
-  console.error("Critical error during server boot:", err);
-  const fallbackApp = express();
-  fallbackApp.all('*', (req, res) => {
-    res.status(500).json({ 
-      error: "Erreur critique du serveur backend (Démarrage)",
-      details: err.message || String(err),
-      hint: "Consultez les logs pour plus de détails. Vercel ne supporte pas SQLite nativement pour le stockage persistant."
-    });
-  });
-  return fallbackApp;
-});
+export { startServer };
 
-// Export the server promise (default export for some environments)
-export default serverPromise;
+// Auto-start if run directly (not imported as a module by Vercel)
+const isVercelRuntime = !!process.env.VERCEL;
+if (!isVercelRuntime) {
+  startServer().catch(err => {
+    console.error("Critical error during server boot:", err);
+    process.exit(1);
+  });
+}
+
 
