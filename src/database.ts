@@ -9,10 +9,31 @@ export async function initDb() {
     ? path.join('/tmp', 'database.sqlite')
     : path.join(process.cwd(), 'database.sqlite');
     
-  const db = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
+  let db;
+  try {
+    db = await open({
+      filename: dbPath,
+      driver: sqlite3.Database
+    });
+    // Quick test query to verify integrity
+    await db.get("PRAGMA schema_version");
+  } catch (err: any) {
+    if (err.message && err.message.includes('SQLITE_CORRUPT')) {
+      console.warn("Database is corrupt. Deleting and recreating...");
+      const fs = require('fs');
+      try {
+        fs.unlinkSync(dbPath);
+      } catch (e) {
+        // Ignorer si la suppression échoue (ex: fichier inexistant)
+      }
+      db = await open({
+        filename: dbPath,
+        driver: sqlite3.Database
+      });
+    } else {
+      throw err;
+    }
+  }
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS users (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Lock, Mail, ArrowRight, Chrome, ShieldCheck } from 'lucide-react';
+import { User, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -39,11 +39,23 @@ export default function Register() {
       });
 
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: 'Erreur backend' }));
-        throw new Error(errData.error || "Erreur lors de l'inscription");
+        const textData = await res.text();
+        let errorMessage = "Erreur lors de l'inscription";
+        try {
+          const errData = JSON.parse(textData);
+          errorMessage = errData.error || errorMessage;
+        } catch {
+          errorMessage = `Erreur Serveur (${res.status}): ` + textData.substring(0, 100);
+        }
+        throw new Error(errorMessage);
       }
 
-      const localData = await res.json().catch(() => null);
+      let localData = null;
+      try {
+        localData = await res.json();
+      } catch (e) {
+        console.warn('Could not parse JSON for standard success payload. Stream already read?');
+      }
 
       if (localData && localData.user && localData.token) {
         await login(localData.user, localData.token);
@@ -63,37 +75,6 @@ export default function Register() {
          setError("Serveur inaccessible pour l'inscription. Vérifiez votre connexion.");
       } else {
          setError("Erreur : " + err.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleAuth = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-       const res = await fetch('/api/auth/google', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ email: email || 'pape@samabutik.com' })
-       });
-       
-       if (!res.ok) {
-         const data = await res.json().catch(() => ({}));
-         throw new Error(data.error || 'Erreur auth Google locale');
-       }
-       
-       const data = await res.json();
-       await login(data.user, data.token);
-       navigate(data.user.role === 'admin' ? '/admin' : '/');
-    } catch (err: any) {
-      console.error('Registration Google Error:', err);
-      if (err.name === 'AbortError' || err.message === 'Failed to fetch') {
-        setError("Erreur réseau: Serveur injoignable.");
-      } else {
-        setError("Erreur Google : " + err.message);
       }
     } finally {
       setLoading(false);
@@ -204,43 +185,6 @@ export default function Register() {
             Créer mon compte <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
           </button>
         </form>
-
-        <div className="relative flex items-center justify-center mb-8">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-stone-100"></div>
-          </div>
-          <span className="relative px-4 bg-white text-[9px] uppercase tracking-[0.4em] text-text-deep/30">Ou</span>
-        </div>
-
-        <button 
-          onClick={handleGoogleAuth}
-          disabled={loading}
-          className="w-full bg-white border border-stone-200 text-text-deep/60 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-[0.3em] flex items-center justify-center gap-3 hover:bg-stone-50 hover:border-secondary/30 transition-all disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99] shadow-sm mb-6"
-        >
-          <Chrome className="w-4 h-4 text-secondary" /> S'inscrire avec Google
-        </button>
-
-        {configHelp && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="mb-8 p-4 bg-orange-50 border border-orange-100 rounded-2xl text-left"
-          >
-            <p className="text-[9px] font-bold uppercase text-orange-600 mb-2 tracking-wider flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" /> Configuration requise
-            </p>
-            <div className="space-y-3">
-              <div>
-                <p className="text-[8px] uppercase text-orange-400 font-bold mb-1">Site URL (Supabase):</p>
-                <code className="text-[9px] block bg-white p-2 rounded border border-orange-100 break-all select-all">{configHelp.siteUrl}</code>
-              </div>
-              <div>
-                <p className="text-[8px] uppercase text-orange-400 font-bold mb-1">Redirect URI (Google Console):</p>
-                <code className="text-[9px] block bg-white p-2 rounded border border-orange-100 break-all select-all">{configHelp.callbackUrl}</code>
-              </div>
-            </div>
-          </motion.div>
-        )}
 
         <div className="text-center space-y-4">
             <button 
