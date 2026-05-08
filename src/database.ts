@@ -1,26 +1,39 @@
-import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
 
 export async function initDb() {
   const isVercel = !!process.env.VERCEL;
-  const dbPath = isVercel 
-    ? path.join('/tmp', 'database.sqlite')
-    : path.join(process.cwd(), 'database.sqlite');
+
+  if (isVercel) {
+    console.error("Vercel environment detected. Native SQLite is not supported.");
+    throw new Error("Erreur de chargement du module SQLite. Sur Vercel, utilisez une base de données cloud (ex: Supabase, Neon) plutôt que SQLite.");
+  }
+
+  const dbPath = path.join(process.cwd(), 'database.sqlite');
     
+  let sqlite3;
+  try {
+    const sqlite3Module = await import('sqlite3');
+    sqlite3 = sqlite3Module.default || sqlite3Module;
+  } catch (err: any) {
+    console.error("Failed to load sqlite3 native module.", err);
+    throw new Error("Erreur de chargement du module SQLite. Sur Vercel, utilisez une base de données cloud (ex: Supabase, Neon) plutôt que SQLite.");
+  }
+
   let db;
   try {
     db = await open({
       filename: dbPath,
       driver: sqlite3.Database
     });
+
     // Quick test query to verify integrity
     await db.get("PRAGMA schema_version");
   } catch (err: any) {
     if (err.message && err.message.includes('SQLITE_CORRUPT')) {
       console.warn("Database is corrupt. Deleting and recreating...");
-      const fs = require('fs');
       try {
         fs.unlinkSync(dbPath);
       } catch (e) {

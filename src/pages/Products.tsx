@@ -18,7 +18,14 @@ export default function Products() {
     setError(null);
     try {
       const response = await fetch('/api/products');
-      if (!response.ok) throw new Error(`Server status: ${response.status}`);
+      if (!response.ok) {
+        let errMsg = `Server status: ${response.status}`;
+        try {
+          const errData = await response.json();
+          if (errData.error) errMsg = errData.error + (errData.hint ? " - " + errData.hint : "");
+        } catch(e) {}
+        throw new Error(errMsg);
+      }
       const data = await response.json();
       setProducts(data.products || data.items || []);
     } catch (err: any) {

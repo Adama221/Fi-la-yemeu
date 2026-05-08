@@ -624,7 +624,18 @@ async function startServer() {
 }
 
 // Start the server
-const serverPromise = startServer();
+const serverPromise = startServer().catch(err => {
+  console.error("Critical error during server boot:", err);
+  const fallbackApp = express();
+  fallbackApp.all('*', (req, res) => {
+    res.status(500).json({ 
+      error: "Erreur critique du serveur backend (Démarrage)",
+      details: err.message || String(err),
+      hint: "Consultez les logs pour plus de détails. Vercel ne supporte pas SQLite nativement pour le stockage persistant."
+    });
+  });
+  return fallbackApp;
+});
 
 // Export the server promise (default export for some environments)
 export default serverPromise;
