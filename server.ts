@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { initDb } from './src/database.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { setupMcpServer } from './src/pages/mcp.js';
+import { setupMcpServer } from './src/mcp.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 
 dotenv.config();
@@ -16,6 +16,7 @@ dotenv.config();
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = path.dirname(_filename);
 
+// Ensure uploads folder is at the root of the project, not inside dist/
 const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -30,7 +31,7 @@ async function startServer() {
   const db = await initDb();
   console.log('DB initialized successfully');
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -397,7 +398,8 @@ async function startServer() {
   app.get('/api/admin/affiliates', adminRequired, async (req, res) => {
     try {
       const affiliates = await db.all(`
-        SELECT a.*, u.email 
+        SELECT a.*, u.email,
+               (SELECT COUNT(*) FROM commissions c WHERE c.affiliate_id = a.id) as sales_count
         FROM affiliates a 
         JOIN users u ON a.user_id = u.id
       `);
@@ -606,6 +608,13 @@ async function startServer() {
     }
   }
 
+  // Global Express Error Handler
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    console.error('Unhandled server error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  });
+
+  // Only listen if not in a test environment
   if (process.env.NODE_ENV !== 'test') {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on http://localhost:${PORT}`);
@@ -617,7 +626,6 @@ async function startServer() {
 
 export { startServer };
 
-// Auto-start if run directly
 startServer().catch(err => {
   console.error("Critical error during server boot:", err);
   process.exit(1);

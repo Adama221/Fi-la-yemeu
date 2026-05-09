@@ -4,12 +4,14 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 
 export async function initDb() {
-  const dataDir = path.join(process.cwd(), 'data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
+  const isVercel = !!process.env.VERCEL;
+
+  let dbPath = path.join(process.cwd(), 'database.sqlite');
   
-  const dbPath = path.join(dataDir, 'database.sqlite');
+  if (isVercel) {
+    console.warn("Vercel environment detected. Using /tmp/database.sqlite. Data will be lost on cold starts.");
+    dbPath = path.join('/tmp', 'database.sqlite');
+  }
     
   let sqlite3;
   try {

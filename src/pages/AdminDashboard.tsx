@@ -739,7 +739,7 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-accent-soft/30 p-4 rounded-2xl">
                       <p className="text-[8px] font-bold uppercase tracking-widest text-primary/40 mb-1">Ventes</p>
-                      <p className="text-lg font-serif font-bold text-primary italic">{/* To handle real sales count we would need server side logic. Left statically for now */} 0</p>
+                      <p className="text-lg font-serif font-bold text-primary italic">{aff.sales_count || 0}</p>
                     </div>
                     <div className="bg-accent-soft/30 p-4 rounded-2xl">
                       <p className="text-[8px] font-bold uppercase tracking-widest text-primary/40 mb-1">Gain Total</p>

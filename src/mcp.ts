@@ -4,7 +4,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { initDb } from '../database.js';
+import { initDb } from './database.js';
 
 export async function setupMcpServer() {
   const db = await initDb();
