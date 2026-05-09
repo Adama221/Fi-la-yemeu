@@ -76,7 +76,7 @@ async function startServer() {
   
   const db = await initDb();
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // CORS configuration
   const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*';
@@ -112,6 +112,68 @@ async function startServer() {
       next();
     }
   });
+
+  const authRequired = async (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Accès refusé, veuillez vous connecter." });
+    }
+ 
+    const token = authHeader.split(' ')[1];
+    let user: any = null;
+ 
+    try {
+      if (token === 'mock-token-pape') {
+         user = { role: 'admin', email: 'pape@samabutik.com', id: 1 };
+      } else {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        user = decoded;
+      }
+    } catch(e: any) {
+      if (e.name === 'TokenExpiredError') {
+        return res.status(401).json({ error: "Token expiré. Veuillez vous reconnecter." });
+      }
+      return res.status(401).json({ error: "Token invalide." });
+    }
+ 
+    if (!user) {
+      return res.status(401).json({ error: "Utilisateur non trouvé." });
+    }
+ 
+    (req as any).user = user;
+    next();
+  };
+
+  const adminRequired = async (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Accès refusé, veuillez vous connecter." });
+    }
+ 
+    const token = authHeader.split(' ')[1];
+    let user: any = null;
+ 
+    try {
+      if (token === 'mock-token-pape') {
+         user = { role: 'admin', email: 'pape@samabutik.com' };
+      } else {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        user = decoded;
+      }
+    } catch(e: any) {
+      if (e.name === 'TokenExpiredError') {
+        return res.status(401).json({ error: "Token expiré. Veuillez vous reconnecter." });
+      }
+      return res.status(401).json({ error: "Token invalide." });
+    }
+ 
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Accès interdit : privilèges administrateur requis." });
+    }
+ 
+    (req as any).user = user;
+    next();
+  };
 
   app.get('/test-node', (req, res) => res.send(`Node is active on port ${PORT} at ${new Date().toISOString()}`));
   
@@ -263,68 +325,6 @@ async function startServer() {
     }
   });
 
-  const authRequired = async (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: "Accès refusé, veuillez vous connecter." });
-    }
- 
-    const token = authHeader.split(' ')[1];
-    let user: any = null;
- 
-    try {
-      if (token === 'mock-token-pape') {
-         user = { role: 'admin', email: 'pape@samabutik.com', id: 1 };
-      } else {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
-        user = decoded;
-      }
-    } catch(e: any) {
-      if (e.name === 'TokenExpiredError') {
-        return res.status(401).json({ error: "Token expiré. Veuillez vous reconnecter." });
-      }
-      return res.status(401).json({ error: "Token invalide." });
-    }
- 
-    if (!user) {
-      return res.status(401).json({ error: "Utilisateur non trouvé." });
-    }
- 
-    (req as any).user = user;
-    next();
-  };
-
-  const adminRequired = async (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: "Accès refusé, veuillez vous connecter." });
-    }
- 
-    const token = authHeader.split(' ')[1];
-    let user: any = null;
- 
-    try {
-      if (token === 'mock-token-pape') {
-         user = { role: 'admin', email: 'pape@samabutik.com' };
-      } else {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
-        user = decoded;
-      }
-    } catch(e: any) {
-      if (e.name === 'TokenExpiredError') {
-        return res.status(401).json({ error: "Token expiré. Veuillez vous reconnecter." });
-      }
-      return res.status(401).json({ error: "Token invalide." });
-    }
- 
-    if (!user || user.role !== "admin") {
-      return res.status(403).json({ error: "Accès interdit : privilèges administrateur requis." });
-    }
- 
-    (req as any).user = user;
-    next();
-  };
-
   const handleCommission = async (order: any) => {
     if (order.affiliate_code) {
       try {
@@ -404,6 +404,38 @@ async function startServer() {
     const product = await db.get('SELECT * FROM products WHERE id = ?', [req.params.id]);
     if (!product) return res.status(404).json({ error: 'not found' });
     res.json(product);
+  });
+
+  // Search Products
+  app.get('/api/products/search', async (req, res) => {
+    const { q } = req.query;
+    if (!q) return res.json({ products: [] });
+    try {
+      const products = await db.all(
+        'SELECT * FROM products WHERE name LIKE ? OR description LIKE ? LIMIT 20',
+        [`%${q}%`, `%${q}%`]
+      );
+      res.json({ products });
+    } catch (err) {
+      res.status(500).json({ error: "Erreur lors de la recherche" });
+    }
+  });
+
+  // Related Products
+  app.get('/api/products/:id/related', async (req, res) => {
+    const { id } = req.params;
+    try {
+      const product = await db.get('SELECT category FROM products WHERE id = ?', [id]);
+      if (!product) return res.status(404).json({ error: "Produit non trouvé" });
+
+      const related = await db.all(
+        'SELECT * FROM products WHERE category = ? AND id != ? LIMIT 4',
+        [product.category, id]
+      );
+      res.json({ related });
+    } catch (err) {
+      res.status(500).json({ error: "Erreur lors de la récupération des produits similaires" });
+    }
   });
 
   app.get('/api/categories', async (req, res) => {
@@ -514,6 +546,50 @@ async function startServer() {
       salesTrend: salesByDay,
       popularProducts
     });
+  });
+  
+  // ====================== HOSTINGER API DIAGNOSTICS ======================
+  app.get('/api/admin/server/hostinger-status', adminRequired, async (req, res) => {
+    const apiKey = process.env.HOSTINGER_API_KEY;
+    if (!apiKey) {
+      return res.status(400).json({ 
+        error: "Clé API Hostinger non configurée.",
+        status: "missing_key",
+        instruction: "Ajoutez HOSTINGER_API_KEY dans votre fichier .env"
+      });
+    }
+
+    try {
+      // On tente de lister les services pour vérifier la clé et le statut du compte
+      const response = await fetch('https://api.hostinger.com/v1/services', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        return res.status(response.status).json({ 
+          error: "Erreur Hostinger API",
+          status: response.status,
+          details: errorText
+        });
+      }
+
+      const data = await response.json();
+      res.json({
+        success: true,
+        source: 'Hostinger API',
+        data
+      });
+    } catch (err: any) {
+      console.error("[HOSTINGER API ERROR]", err);
+      res.status(500).json({ 
+        error: "Impossible de contacter l'API Hostinger", 
+        message: err.message 
+      });
+    }
   });
 
   // ====================== PAYMENT CONFIG ======================
