@@ -119,6 +119,33 @@ export async function initDb() {
       secondary_color TEXT DEFAULT '#D4A373',
       homepage_text TEXT DEFAULT 'Bienvenue'
     );
+
+    CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS product_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER,
+      user_id INTEGER,
+      rating INTEGER,
+      comment TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (product_id) REFERENCES products (id),
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    );
+
+    CREATE TABLE IF NOT EXISTS wishlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      product_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, product_id),
+      FOREIGN KEY (user_id) REFERENCES users (id),
+      FOREIGN KEY (product_id) REFERENCES products (id)
+    );
   `);
 
   // Safe table migrations for existing installs

@@ -219,6 +219,50 @@ async function startServer() {
     }
   });
 
+  app.get('/api/auth/me', async (req: Request, res: Response) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Non connecté." });
+    }
+    try {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const user = await db.get('SELECT id, username, email, role, phone, address FROM users WHERE id = ?', [decoded.id]);
+      if (!user) return res.status(404).json({ error: "Utilisateur introuvable." });
+      res.json({ user });
+    } catch (err) {
+      res.status(401).json({ error: "Session expirée." });
+    }
+  });
+
+  app.get('/api/auth/verify', async (req: Request, res: Response) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.json({ valid: false });
+    try {
+      const token = authHeader.split(' ')[1];
+      jwt.verify(token, JWT_SECRET);
+      res.json({ valid: true });
+    } catch (err) {
+      res.json({ valid: false });
+    }
+  });
+
+  app.put('/api/user/profile', authRequired, async (req: Request, res: Response) => {
+    const user = (req as any).user;
+    const { username, phone, address } = req.body;
+    
+    try {
+      await db.run(
+        'UPDATE users SET username = ?, phone = ?, address = ? WHERE id = ?',
+        [username, phone, address, user.id]
+      );
+      const updated = await db.get('SELECT id, username, email, role, phone, address FROM users WHERE id = ?', [user.id]);
+      res.json({ success: true, user: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: "Erreur lors de la mise à jour du profil." });
+    }
+  });
+
   const authRequired = async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -360,6 +404,116 @@ async function startServer() {
     const product = await db.get('SELECT * FROM products WHERE id = ?', [req.params.id]);
     if (!product) return res.status(404).json({ error: 'not found' });
     res.json(product);
+  });
+
+  app.get('/api/categories', async (req, res) => {
+    try {
+      const categories = await db.all('SELECT DISTINCT category FROM products WHERE category IS NOT NULL');
+      res.json({ categories: categories.map(c => c.category) });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+
+  // ====================== REVIEWS ======================
+  app.get('/api/products/:id/reviews', async (req, res) => {
+    const reviews = await db.all(`
+      SELECT r.*, u.username 
+      FROM product_reviews r 
+      JOIN users u ON r.user_id = u.id 
+      WHERE r.product_id = ? 
+      ORDER BY r.created_at DESC
+    `, [req.params.id]);
+    res.json({ reviews });
+  });
+
+  app.post('/api/products/:id/reviews', authRequired, async (req, res) => {
+    const { rating, comment } = req.body;
+    const user = (req as any).user;
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "La note est obligatoire (1-5)." });
+    }
+    
+    try {
+      await db.run(
+        'INSERT INTO product_reviews (product_id, user_id, rating, comment) VALUES (?, ?, ?, ?)',
+        [req.params.id, user.id, rating, comment]
+      );
+      res.json({ success: true, message: "Avis ajouté." });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to add review" });
+    }
+  });
+
+  // ====================== WISHLIST ======================
+  app.get('/api/user/wishlist', authRequired, async (req, res) => {
+    const user = (req as any).user;
+    const wishlist = await db.all(`
+      SELECT p.* 
+      FROM wishlists w 
+      JOIN products p ON w.product_id = p.id 
+      WHERE w.user_id = ?
+    `, [user.id]);
+    res.json({ wishlist });
+  });
+
+  app.post('/api/user/wishlist/toggle', authRequired, async (req, res) => {
+    const { product_id } = req.body;
+    const user = (req as any).user;
+    if (!product_id) return res.status(400).json({ error: "Product ID is required" });
+
+    const existing = await db.get('SELECT id FROM wishlists WHERE user_id = ? AND product_id = ?', [user.id, product_id]);
+    
+    if (existing) {
+      await db.run('DELETE FROM wishlists WHERE id = ?', [existing.id]);
+      res.json({ action: 'removed', message: "Retiré des favoris." });
+    } else {
+      await db.run('INSERT INTO wishlists (user_id, product_id) VALUES (?, ?)', [user.id, product_id]);
+      res.json({ action: 'added', message: "Ajouté aux favoris." });
+    }
+  });
+
+  // ====================== NEWSLETTER ======================
+  app.post('/api/newsletter/subscribe', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email requis." });
+
+    try {
+      await db.run('INSERT INTO newsletter_subscribers (email) VALUES (?)', [email]);
+      res.json({ success: true, message: "Inscription réussie !" });
+    } catch (err: any) {
+      if (err.message && err.message.includes('UNIQUE')) {
+        return res.json({ success: true, message: "Vous êtes déjà inscrit." });
+      }
+      res.status(500).json({ error: "Failed to subscribe" });
+    }
+  });
+
+  // ====================== ADMIN ANALYTICS ======================
+  app.get('/api/admin/analytics', adminRequired, async (req, res) => {
+    // Sales by day (last 30 days)
+    const salesByDay = await db.all(`
+      SELECT date(created_at) as day, SUM(total) as revenue, COUNT(*) as count 
+      FROM orders 
+      WHERE created_at >= date('now', '-30 days')
+      GROUP BY day 
+      ORDER BY day ASC
+    `);
+
+    // Popular products
+    const popularProducts = await db.all(`
+      SELECT p.name, COUNT(*) as sales_count 
+      FROM orders o, json_each(o.items_json) as item
+      JOIN products p ON p.id = json_extract(item.value, '$.id')
+      GROUP BY p.id
+      ORDER BY sales_count DESC
+      LIMIT 5
+    `);
+
+    res.json({
+      salesTrend: salesByDay,
+      popularProducts
+    });
   });
 
   // ====================== PAYMENT CONFIG ======================
