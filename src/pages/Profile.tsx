@@ -26,11 +26,21 @@ export default function Profile() {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
+      const contentType = res.headers.get('content-type');
       if (res.ok) {
-        const data = await res.json();
-        setOrders(data.orders || []);
+        if (contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          setOrders(data.orders || []);
+        } else {
+          throw new Error("Réponse API invalide : Reçu du HTML au lieu de JSON. Le serveur n'est pas bien configuré.");
+        }
       } else {
-        throw new Error('Impossible de charger les commandes');
+        if (contentType && contentType.includes('application/json')) {
+          const errData = await res.json();
+          throw new Error(errData.error || `Erreur ${res.status}`);
+        } else {
+           throw new Error(`Le serveur API n'a pas répondu correctement (Status: ${res.status}).`);
+        }
       }
     } catch (err: any) {
       setError(err.message);
