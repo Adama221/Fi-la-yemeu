@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { initDb } from './src/database.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { setupMcpServer } from './src/mcp.js';
+import { setupMcpServer } from './src/pages/mcp.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 
 dotenv.config();
@@ -16,8 +16,10 @@ dotenv.config();
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = path.dirname(_filename);
 
-const isVercel = !!process.env.VERCEL;
-const uploadsDir = isVercel ? path.join('/tmp', 'uploads') : path.join(_dirname, 'uploads');
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const upload = multer({ dest: uploadsDir });
 
@@ -459,15 +461,15 @@ async function startServer() {
 
   // ====================== DESIGN ======================
   app.post('/api/admin/design', adminRequired, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), async (req, res) => {
-    const files = (req.files as { [fieldname: string]: Express.Multer.File[] }) || {};
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     let updates: string[] = [];
     let values: any[] = [];
 
-    if (files.logo && files.logo.length > 0) {
+    if (files.logo) {
       updates.push('logo = ?');
       values.push('/uploads/' + files.logo[0].filename);
     }
-    if (files.cover && files.cover.length > 0) {
+    if (files.cover) {
       updates.push('cover = ?');
       values.push('/uploads/' + files.cover[0].filename);
     }
@@ -501,10 +503,7 @@ async function startServer() {
       values.push(1); // WHERE id = 1
       await db.run(`UPDATE site_settings SET ${updates.join(', ')} WHERE id = ?`, values);
     }
-    
-    // Refresh settings return to update frontend cache if possible
-    const newSettings = await db.get('SELECT * FROM site_settings WHERE id = 1');
-    res.json({ message: "Design modifié", settings: newSettings });
+    res.json({ message: "Design modifié" });
   });
 
   app.get('/api/settings', async (req, res) => {
@@ -607,10 +606,7 @@ async function startServer() {
     }
   }
 
-  // Only listen if we are not in a serverless environment or if explicitly running locally
-  if (process.env.VERCEL) {
-    console.log('Running on Vercel environment');
-  } else if (process.env.NODE_ENV !== 'test') {
+  if (process.env.NODE_ENV !== 'test') {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
@@ -621,13 +617,10 @@ async function startServer() {
 
 export { startServer };
 
-// Auto-start if run directly (not imported as a module by Vercel)
-const isVercelRuntime = !!process.env.VERCEL;
-if (!isVercelRuntime) {
-  startServer().catch(err => {
-    console.error("Critical error during server boot:", err);
-    process.exit(1);
-  });
-}
+// Auto-start if run directly
+startServer().catch(err => {
+  console.error("Critical error during server boot:", err);
+  process.exit(1);
+});
 
 
