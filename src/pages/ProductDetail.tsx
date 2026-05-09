@@ -17,7 +17,21 @@ export default function ProductDetail() {
       try {
         if (!id) return;
         const response = await fetch(`/api/products/${id}`);
-        if (!response.ok) throw new Error('Not found');
+        const contentType = response.headers.get('content-type');
+
+        if (!response.ok) {
+          if (contentType && contentType.includes('application/json')) {
+            const errData = await response.json();
+            throw new Error(errData.error || 'Not found');
+          } else {
+            throw new Error('Le serveur API est mal configuré (Reçu du HTML au lieu de JSON).');
+          }
+        }
+
+        if (!contentType || !contentType.includes('application/json')) {
+           throw new Error("Réponse API invalide : Reçu du HTML au lieu de JSON.");
+        }
+
         const data = await response.json();
         setProduct(data);
       } catch (error) {

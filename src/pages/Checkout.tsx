@@ -44,18 +44,32 @@ export default function Checkout() {
          method: 'POST',
          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
           body: JSON.stringify({
-            customer_info: customerInfo,
-            items_json: items,
+            customer: customerInfo,
+            items: items,
             total,
-            payment_method: payMethod === 'orange' ? 'orange_money' : 'wave',
+            method: payMethod === 'orange' ? 'orange' : 'wave',
             affiliate_code: affiliateCode,
-            status: payMethod === 'orange' ? 'payé' : 'en_attente'
+            status: 'pending'
          })
       });
-      if (!res.ok) throw new Error("Could not create order");
+      
+      const contentType = res.headers.get('content-type');
+      if (!res.ok) {
+        if (contentType && contentType.includes('application/json')) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Erreur lors de la création de la commande");
+        } else {
+          throw new Error("L'API de commande est inaccessible (Reçu HTML au lieu de JSON).");
+        }
+      }
+
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error("Réponse API invalide lors de la commande.");
+      }
+
       const data = await res.json();
       return data.id;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving order:', error);
       throw error;
     }

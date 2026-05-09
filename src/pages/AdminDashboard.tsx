@@ -57,13 +57,24 @@ export default function AdminDashboard() {
       try {
         // Fetch Dashboard Stats
         const dRes = await fetch('/api/admin/dashboard', { headers });
-        if (!dRes.ok) throw new Error(`Stats: ${dRes.status}`);
-        const dData = await dRes.json();
-        setStatsData(dData);
+        const dContentType = dRes.headers.get('content-type');
+        
+        if (!dRes.ok) {
+           if (dContentType && dContentType.includes('application/json')) {
+              const err = await dRes.json();
+              throw new Error(err.error || `Erreur ${dRes.status}`);
+           }
+           throw new Error(`Stats indisponibles (Status: ${dRes.status}). Vérifiez le serveur NODE.`);
+        }
+        
+        if (dContentType && dContentType.includes('application/json')) {
+           const dData = await dRes.json();
+           setStatsData(dData);
+        }
 
         // Fetch Settings Branding & Payment
         const res = await fetch('/api/settings');
-        if (res.ok) {
+        if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
           const data = await res.json();
           const s = data.settings || data;
           setBranding({
@@ -75,7 +86,7 @@ export default function AdminDashboard() {
         }
         
         const paysRes = await fetch('/api/admin/payment-links', { headers });
-        if (paysRes.ok) {
+        if (paysRes.ok && paysRes.headers.get('content-type')?.includes('application/json')) {
            const paysData = await paysRes.json();
            setPaymentSettings(prev => ({
              ...prev,
@@ -86,14 +97,14 @@ export default function AdminDashboard() {
 
         // Fetch Orders
         const ordRes = await fetch('/api/admin/orders', { headers: { 'Authorization': `Bearer ${token}` }});
-        if (ordRes.ok) {
+        if (ordRes.ok && ordRes.headers.get('content-type')?.includes('application/json')) {
           const data = await ordRes.json();
           setOrders(data.orders || []);
         }
 
         // Fetch Affiliates
         const affRes = await fetch('/api/admin/affiliates', { headers: { 'Authorization': `Bearer ${token}` }});
-        if (affRes.ok) {
+        if (affRes.ok && affRes.headers.get('content-type')?.includes('application/json')) {
           const data = await affRes.json();
           setAffiliates(data.affiliates || []);
         }

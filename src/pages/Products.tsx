@@ -18,14 +18,21 @@ export default function Products() {
     setError(null);
     try {
       const response = await fetch('/api/products');
+      const contentType = response.headers.get('content-type');
+
       if (!response.ok) {
-        let errMsg = `Server status: ${response.status}`;
-        try {
-          const errData = await response.json();
-          if (errData.error) errMsg = errData.error + (errData.hint ? " - " + errData.hint : "");
-        } catch(e) {}
-        throw new Error(errMsg);
+        if (contentType && contentType.includes('application/json')) {
+           const errData = await response.json();
+           throw new Error(errData.error || `Erreur ${response.status}`);
+        } else {
+           throw new Error(`Le serveur API n'a pas répondu correctement (Status: ${response.status}). Vérifiez le déploiement.`);
+        }
       }
+
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error("Réponse API invalide : Reçu du HTML au lieu de JSON.");
+      }
+
       const data = await response.json();
       setProducts(data.products || data.items || []);
     } catch (err: any) {
