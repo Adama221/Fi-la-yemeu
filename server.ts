@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -76,6 +77,14 @@ async function startServer() {
   const db = await initDb();
   const app = express();
   const PORT = process.env.PORT || 3000;
+
+  // CORS configuration
+  app.use(cors({
+    origin: '*', 
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
 
   console.log(`[STARTUP] Listening on PORT: ${PORT}`);
   console.log(`[STARTUP] NODE_ENV: ${process.env.NODE_ENV}`);
@@ -643,14 +652,17 @@ async function startServer() {
   app.get('/api/health', (req, res) => {
     res.json({ 
       status: 'ok', 
-      server: 'SamaButik Node.js (Hostinger Ready)',
+      server: 'SamaButik Node.js (Express)',
+      env: process.env.NODE_ENV,
+      port: PORT,
       timestamp: new Date().toISOString()
     });
   });
 
-  // Specific API 404 handler (JSON)
+  // Specific API fallback - Catch ANY other /api route that didn't match above
   app.all('/api/*', (req, res) => {
-    res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
+    console.log(`[404] API route not found: ${req.method} ${req.url}`);
+    res.status(404).json({ error: `API route not found: ${req.method} ${req.url}. Vérifiez vos routes côté serveur.` });
   });
 
   if (process.env.NODE_ENV !== 'production') {

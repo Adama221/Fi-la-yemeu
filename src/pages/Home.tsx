@@ -14,14 +14,21 @@ export default function Home() {
     setError(null);
     try {
       const response = await fetch('/api/products');
+      const contentType = response.headers.get('content-type');
+      
       if (!response.ok) {
-        let errMsg = `Server returned ${response.status}`;
-        try {
+        if (contentType && contentType.includes('application/json')) {
           const errData = await response.json();
-          if (errData.error) errMsg = errData.error + (errData.hint ? " - " + errData.hint : "");
-        } catch(e) {}
-        throw new Error(errMsg);
+          throw new Error(errData.error || `Erreur ${response.status}`);
+        } else {
+          throw new Error("Le serveur API n'a pas répondu correctement. Vérifiez votre déploiement Hostinger.");
+        }
       }
+
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error("Réponse API invalide : Reçu du HTML au lieu de JSON. Le Reverse Proxy est mal configuré.");
+      }
+
       const data = await response.json();
       setFeaturedProducts((data.products || data.items || []).slice(0, 4));
     } catch (error: any) {
