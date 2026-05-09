@@ -18,6 +18,15 @@ const ROOT_DIR = process.cwd();
 const distPath = path.resolve(ROOT_DIR, 'dist');
 const uploadsDir = path.resolve(ROOT_DIR, 'uploads');
 
+console.log('--- DIAGNOSTIC HOSTINGER ---');
+console.log('Current CWD:', ROOT_DIR);
+console.log('Target Dist Path:', distPath);
+console.log('Dist Folder Exists:', fs.existsSync(distPath));
+if (fs.existsSync(distPath)) {
+  console.log('Files in Dist:', fs.readdirSync(distPath));
+}
+console.log('---------------------------');
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -600,14 +609,18 @@ async function startServer() {
   } else {
     // Serve frontend from dist folder (absolute path resolved at startup)
     if (fs.existsSync(distPath)) {
-      console.log(`Serving static files from: ${distPath}`);
       app.use(express.static(distPath));
+      
+      // Handle SPA routing
       app.get('*', (req, res) => {
+        // Skip API routes
+        if (req.url.startsWith('/api')) return res.status(404).json({ error: 'API route not found' });
+        
         const indexPath = path.resolve(distPath, 'index.html');
         if (fs.existsSync(indexPath)) {
           res.sendFile(indexPath);
         } else {
-          res.status(404).send('Frontend index.html non trouvé dans ' + distPath);
+          res.status(404).send(`Fichier index.html introuvable dans ${distPath}. Vérifiez votre build.`);
         }
       });
     } else {
