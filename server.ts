@@ -83,6 +83,17 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   
+  // Normalize trailing slashes
+  app.use((req, res, next) => {
+    if (req.path.endsWith('/') && req.path.length > 1) {
+      const query = req.url.slice(req.path.length);
+      const safePath = req.path.slice(0, -1);
+      res.redirect(301, safePath + query);
+    } else {
+      next();
+    }
+  });
+
   app.get('/test-node', (req, res) => res.send(`Node is active on port ${PORT} at ${new Date().toISOString()}`));
   
   // Debug middleware for Hostinger issues
@@ -629,13 +640,17 @@ async function startServer() {
     }
   });
 
-  // API Routes
   app.get('/api/health', (req, res) => {
     res.json({ 
       status: 'ok', 
       server: 'SamaButik Node.js (Hostinger Ready)',
       timestamp: new Date().toISOString()
     });
+  });
+
+  // Specific API 404 handler (JSON)
+  app.all('/api/*', (req, res) => {
+    res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
   });
 
   if (process.env.NODE_ENV !== 'production') {
@@ -648,22 +663,27 @@ async function startServer() {
   } else {
     // Serve frontend from dist folder (absolute path resolved at startup)
     if (fs.existsSync(distPath)) {
-      app.use(express.static(distPath));
+      app.use(express.static(distPath, { index: false })); // Let the catch-all handle index.html for non-root
       
-  // Handle SPA routing
-  app.get('*', (req, res) => {
-    // Skip API routes
-    if (req.url.startsWith('/api')) return res.status(404).json({ error: 'API route not found' });
-    if (req.url.startsWith('/uploads')) return res.status(404).send('Upload not found');
-    
-    const indexPath = path.resolve(distPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      console.error(`404: Fichier index.html introuvable dans ${distPath}`);
-      res.status(404).send(`Fichier index.html introuvable dans ${distPath}. Vérifiez que "npm run build" a bien été exécuté.`);
-    }
-  });
+      // Serve index.html for root explicitly or let catch-all handle it
+      app.get('/', (req, res) => {
+        res.sendFile(path.resolve(distPath, 'index.html'));
+      });
+
+      // Handle SPA routing
+      app.get('*', (req, res) => {
+        // Skip API routes already handled or mismatched
+        if (req.url.startsWith('/api')) return; 
+        if (req.url.startsWith('/uploads')) return res.status(404).send('Upload not found');
+        
+        const indexPath = path.resolve(distPath, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          res.sendFile(indexPath);
+        } else {
+          console.error(`404: Fichier index.html introuvable dans ${distPath}`);
+          res.status(404).send(`Fichier index.html introuvable dans ${distPath}. Vérifiez que "npm run build" a bien été exécuté.`);
+        }
+      });
     } else {
       console.error(`Dossier de production non trouvé: ${distPath}`);
       app.get('*', (req, res) => {
@@ -678,8 +698,8 @@ async function startServer() {
     res.status(500).json({ error: 'Internal server error' });
   });
 
-  // Only listen if not in a test environment
-  if (process.env.NODE_ENV !== 'test') {
+  // Only listen if not in a test environment or Vercel
+  if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
@@ -688,11 +708,15 @@ async function startServer() {
   return app;
 }
 
-export { startServer };
+export default startServer;
 
-startServer().catch(err => {
-  console.error("Critical error during server boot:", err);
-  process.exit(1);
-});
+// Start the server if this file is run directly
+const isMain = import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('server.ts');
+if (isMain && !process.env.VERCEL) {
+  startServer().catch(err => {
+    console.error("Critical error during server boot:", err);
+    process.exit(1);
+  });
+}
 
 
