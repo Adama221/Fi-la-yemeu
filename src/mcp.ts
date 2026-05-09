@@ -1,10 +1,10 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import { initDb } from './database.js';
+} from '@modelcontextprotocol/sdk/types';
+import { initDb } from './database';
 
 export async function setupMcpServer() {
   const db = await initDb();

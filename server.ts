@@ -5,18 +5,30 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
-import { initDb } from './src/database.js';
+import { initDb } from './src/database';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { setupMcpServer } from './src/mcp.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { setupMcpServer } from './src/mcp';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse';
 
 dotenv.config();
 
-// Robust path resolution for Hostinger
-const ROOT_DIR = process.cwd();
+// Path resolution shim
+const getPaths = () => {
+  try {
+    const filename = fileURLToPath(import.meta.url);
+    const dirname = path.dirname(filename);
+    return { filename, dirname };
+  } catch {
+    return { filename: __filename, dirname: __dirname };
+  }
+};
+
+const { filename: CURRENT_FILE, dirname: CURRENT_DIR } = getPaths();
+const ROOT_DIR = CURRENT_FILE.includes('dist') ? path.resolve(CURRENT_DIR, '..') : process.cwd();
 const distPath = path.resolve(ROOT_DIR, 'dist');
 const uploadsDir = path.resolve(ROOT_DIR, 'uploads');
+const dataDir = path.resolve(ROOT_DIR, 'data');
 
 console.log('--- DIAGNOSTIC HOSTINGER ---');
 console.log('Current CWD:', ROOT_DIR);
@@ -29,6 +41,28 @@ console.log('---------------------------');
 
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Redirect stdout/stderr to a file in production for Hostinger debugging
+if (process.env.NODE_ENV === 'production') {
+  const logFile = path.resolve(ROOT_DIR, 'data', 'server.log');
+  if (!fs.existsSync(path.dirname(logFile))) fs.mkdirSync(path.dirname(logFile), { recursive: true });
+  const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+  
+  process.stdout.write = (chunk: any) => {
+    logStream.write(`[${new Date().toISOString()}] STDOUT: ${chunk}`);
+    return true;
+  };
+  process.stderr.write = (chunk: any) => {
+    logStream.write(`[${new Date().toISOString()}] STDERR: ${chunk}`);
+    return true;
+  };
+
+  console.log('--- PRODUCTION STARTUP ---');
+  console.log('CWD:', ROOT_DIR);
 }
 
 const upload = multer({ dest: uploadsDir });
@@ -43,8 +77,13 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
 
+  console.log(`[STARTUP] Listening on PORT: ${PORT}`);
+  console.log(`[STARTUP] NODE_ENV: ${process.env.NODE_ENV}`);
+
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+  
+  app.get('/test-node', (req, res) => res.send(`Node is active on port ${PORT} at ${new Date().toISOString()}`));
   
   // Debug middleware for Hostinger issues
   app.use((req, res, next) => {
@@ -611,18 +650,20 @@ async function startServer() {
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));
       
-      // Handle SPA routing
-      app.get('*', (req, res) => {
-        // Skip API routes
-        if (req.url.startsWith('/api')) return res.status(404).json({ error: 'API route not found' });
-        
-        const indexPath = path.resolve(distPath, 'index.html');
-        if (fs.existsSync(indexPath)) {
-          res.sendFile(indexPath);
-        } else {
-          res.status(404).send(`Fichier index.html introuvable dans ${distPath}. Vérifiez votre build.`);
-        }
-      });
+  // Handle SPA routing
+  app.get('*', (req, res) => {
+    // Skip API routes
+    if (req.url.startsWith('/api')) return res.status(404).json({ error: 'API route not found' });
+    if (req.url.startsWith('/uploads')) return res.status(404).send('Upload not found');
+    
+    const indexPath = path.resolve(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error(`404: Fichier index.html introuvable dans ${distPath}`);
+      res.status(404).send(`Fichier index.html introuvable dans ${distPath}. Vérifiez que "npm run build" a bien été exécuté.`);
+    }
+  });
     } else {
       console.error(`Dossier de production non trouvé: ${distPath}`);
       app.get('*', (req, res) => {
