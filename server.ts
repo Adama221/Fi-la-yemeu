@@ -459,15 +459,15 @@ async function startServer() {
 
   // ====================== DESIGN ======================
   app.post('/api/admin/design', adminRequired, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), async (req, res) => {
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const files = (req.files as { [fieldname: string]: Express.Multer.File[] }) || {};
     let updates: string[] = [];
     let values: any[] = [];
 
-    if (files.logo) {
+    if (files.logo && files.logo.length > 0) {
       updates.push('logo = ?');
       values.push('/uploads/' + files.logo[0].filename);
     }
-    if (files.cover) {
+    if (files.cover && files.cover.length > 0) {
       updates.push('cover = ?');
       values.push('/uploads/' + files.cover[0].filename);
     }
@@ -501,7 +501,10 @@ async function startServer() {
       values.push(1); // WHERE id = 1
       await db.run(`UPDATE site_settings SET ${updates.join(', ')} WHERE id = ?`, values);
     }
-    res.json({ message: "Design modifié" });
+    
+    // Refresh settings return to update frontend cache if possible
+    const newSettings = await db.get('SELECT * FROM site_settings WHERE id = 1');
+    res.json({ message: "Design modifié", settings: newSettings });
   });
 
   app.get('/api/settings', async (req, res) => {

@@ -3,7 +3,12 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 
+let cachedDb: any = null;
+
 export async function initDb() {
+  if (cachedDb) {
+    return cachedDb;
+  }
   const isVercel = !!process.env.VERCEL;
 
   let dbPath = path.join(process.cwd(), 'database.sqlite');
@@ -208,5 +213,6 @@ export async function initDb() {
     );
   }
 
+  cachedDb = db;
   return db;
 }

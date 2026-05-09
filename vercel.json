@@ -1,12 +1,22 @@
 {
-  "rewrites": [
+  "version": 2,
+  "builds": [
+    {"src": "api/index.ts", "use": "@vercel/node"},
+    {"src": "dist/**", "use": "@vercel/static"},
+    {"src": "uploads/**", "use": "@vercel/static"}
+  ],
+  "routes": [
+    {"src": "/api/(.*)", "dest": "/api/index.ts"},
+    {"src": "/uploads/(.*)", "dest": "/uploads/$1"},
+    {"src": "/(.*)", "dest": "/dist/$1"}
+  ],
+  "headers": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/uploads/(.*)",
+      "headers": [
+        {"key": "Cache-Control", "value": "public, max-age=31536000"},
+        {"key": "Access-Control-Allow-Origin", "value": "*"}
+      ]
     }
   ]
 }
