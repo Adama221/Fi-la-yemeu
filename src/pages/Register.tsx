@@ -36,13 +36,17 @@ export default function Register() {
       });
 
       if (!res.ok) {
-        const textData = await res.text();
         let errorMessage = "Erreur lors de l'inscription";
-        try {
-          const errData = JSON.parse(textData);
-          errorMessage = errData.error || errorMessage;
-        } catch {
-          errorMessage = `Erreur Serveur (${res.status}): ` + textData.substring(0, 100);
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errData = await res.json();
+            errorMessage = errData.error || errorMessage;
+          } catch {
+            errorMessage = `Erreur Serveur (${res.status}). Le serveur a envoyé une réponse invalide.`;
+          }
+        } else {
+          errorMessage = `Erreur de déploiement (Hostinger) : L'API n'est pas atteignable (Reçu une page web au lieu d'une réponse API). Le serveur Node.js doit être démarré ou le fichier .htaccess doit être corrigé.`;
         }
         throw new Error(errorMessage);
       }
