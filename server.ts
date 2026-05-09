@@ -31,7 +31,7 @@ async function startServer() {
   const db = await initDb();
   console.log('DB initialized successfully');
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
