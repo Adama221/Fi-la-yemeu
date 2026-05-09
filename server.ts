@@ -78,7 +78,15 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
-  // CORS configuration
+  // 1. Logging Middleware (PRIORITY)
+  app.use((req, res, next) => {
+    if (req.url.startsWith('/api')) {
+      console.log(`[API REQUEST] ${req.method} ${req.url}`);
+    }
+    next();
+  });
+
+  // 2. CORS configuration
   const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*';
   app.use(cors({
     origin: allowedOrigins, 
@@ -174,6 +182,17 @@ async function startServer() {
     (req as any).user = user;
     next();
   };
+
+  app.get('/api/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      server: 'SamaButik Node.js (Express)',
+      env: process.env.NODE_ENV || 'development',
+      port: PORT,
+      timestamp: new Date().toISOString(),
+      database: db ? 'connected' : 'disconnected'
+    });
+  });
 
   app.get('/test-node', (req, res) => res.send(`Node is active on port ${PORT} at ${new Date().toISOString()}`));
   
@@ -395,18 +414,7 @@ async function startServer() {
     }
   });
 
-  app.get('/api/products', async (req, res) => {
-    const products = await db.all('SELECT * FROM products ORDER BY id DESC');
-    res.json({ products: products });
-  });
-
-  app.get('/api/products/:id', async (req, res) => {
-    const product = await db.get('SELECT * FROM products WHERE id = ?', [req.params.id]);
-    if (!product) return res.status(404).json({ error: 'not found' });
-    res.json(product);
-  });
-
-  // Search Products
+  // Search Products (MUST be before /api/products/:id)
   app.get('/api/products/search', async (req, res) => {
     const { q } = req.query;
     if (!q) return res.json({ products: [] });
@@ -418,6 +426,25 @@ async function startServer() {
       res.json({ products });
     } catch (err) {
       res.status(500).json({ error: "Erreur lors de la recherche" });
+    }
+  });
+
+  app.get('/api/products', async (req, res) => {
+    try {
+      const products = await db.all('SELECT * FROM products ORDER BY id DESC');
+      res.json({ products: products });
+    } catch (err) {
+      res.status(500).json({ error: "Erreur lors de la récupération des produits" });
+    }
+  });
+
+  app.get('/api/products/:id', async (req, res) => {
+    try {
+      const product = await db.get('SELECT * FROM products WHERE id = ?', [req.params.id]);
+      if (!product) return res.status(404).json({ error: 'Produit non trouvé' });
+      res.json(product);
+    } catch (err) {
+      res.status(500).json({ error: "Erreur serveur" });
     }
   });
 
@@ -887,17 +914,6 @@ async function startServer() {
     } else {
       res.status(400).send('MCP not initialized yet, call GET /mcp/messages first');
     }
-  });
-
-  app.get('/api/health', (req, res) => {
-    res.json({ 
-      status: 'ok', 
-      server: 'SamaButik Node.js (Express)',
-      env: process.env.NODE_ENV,
-      port: PORT,
-      timestamp: new Date().toISOString(),
-      database: db ? 'connected' : 'disconnected'
-    });
   });
 
   app.get('/api/debug-env', (req, res) => {
