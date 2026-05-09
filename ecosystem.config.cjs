@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "samabutik",
-      script: "./dist/server.mjs",
+      script: "./dist/server.cjs",
       instances: 1,
       exec_mode: "fork",
       autorestart: true,

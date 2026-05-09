@@ -13,10 +13,7 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 
 dotenv.config();
 
-const _filename = fileURLToPath(import.meta.url);
-const _dirname = path.dirname(_filename);
-
-// Ensure uploads folder is at the root of the project, not inside dist/
+// Serve uploads folder at root
 const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -591,8 +588,8 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // Determine path based on where server.mjs is located
-    const distPath = _dirname.endsWith('dist') ? _dirname : path.join(process.cwd(), 'dist');
+    // Serve frontend from dist folder (since server is now run from project root, process.cwd() is safe)
+    const distPath = path.join(process.cwd(), 'dist');
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));
       app.get('*', (req, res) => {
