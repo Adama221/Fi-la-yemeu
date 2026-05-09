@@ -4,22 +4,19 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 
 export async function initDb() {
-  const isVercel = !!process.env.VERCEL;
-
-  let dbPath = path.join(process.cwd(), 'database.sqlite');
-  
-  if (isVercel) {
-    console.warn("Vercel environment detected. Using /tmp/database.sqlite. Data will be lost on cold starts.");
-    dbPath = path.join('/tmp', 'database.sqlite');
+  const dataDir = path.join(process.cwd(), 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
-    
+  const dbPath = path.join(dataDir, 'database.sqlite');
+  
   let sqlite3;
   try {
     const sqlite3Module = await import('sqlite3');
     sqlite3 = sqlite3Module.default || sqlite3Module;
   } catch (err: any) {
     console.error("Failed to load sqlite3 native module.", err);
-    throw new Error("Erreur de chargement du module SQLite. Sur Vercel, utilisez une base de données cloud (ex: Supabase, Neon) plutôt que SQLite.");
+    throw new Error("Erreur de chargement du module SQLite.");
   }
 
   let db;
