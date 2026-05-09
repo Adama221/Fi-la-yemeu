@@ -655,7 +655,20 @@ async function startServer() {
       server: 'SamaButik Node.js (Express)',
       env: process.env.NODE_ENV,
       port: PORT,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      database: db ? 'connected' : 'disconnected'
+    });
+  });
+
+  app.get('/api/debug-env', (req, res) => {
+    res.json({
+      cwd: process.cwd(),
+      rootDir: ROOT_DIR,
+      distExists: fs.existsSync(distPath),
+      uploadsExists: fs.existsSync(uploadsDir),
+      nodeVersion: process.version,
+      platform: process.platform,
+      envKeys: Object.keys(process.env).filter(k => !k.includes('SECRET') && !k.includes('KEY'))
     });
   });
 

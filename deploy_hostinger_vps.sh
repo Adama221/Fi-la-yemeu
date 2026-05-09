@@ -52,7 +52,7 @@ cd $PROJECT_DIR
 # 🔥 INSTALL DEPENDANCES & BUILD
 # =====================================================
 
-echo "📦 Installation des dépendances et Build du Frontend..."
+echo "📦 Installation des dépendances et Build du Projet..."
 npm install
 npm run build
 
@@ -79,7 +79,7 @@ server {
 
     client_max_body_size 100M;
 
-    # Routes API et Uploads vers Express (Port 3000)
+    # Routes API vers Express (Port 3000)
     location /api/ {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -89,6 +89,7 @@ server {
         proxy_cache_bypass \$http_upgrade;
     }
 
+    # Images et Uploads
     location /uploads/ {
         proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host \$host;
@@ -110,18 +111,19 @@ EOF
 ln -sf /etc/nginx/sites-available/$PROJECT_NAME /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
+# Test et Redémarrage Nginx
 nginx -t && systemctl restart nginx
 
 # =====================================================
 # 🔥 LANCEMENT DU SERVEUR AVEC PM2
 # =====================================================
 
-pm2 stop $PROJECT_NAME || true
-pm2 delete $PROJECT_NAME || true
+echo "🚀 Lancement de l'application avec PM2..."
+pm2 stop "$PROJECT_NAME" || true
+pm2 delete "$PROJECT_NAME" || true
 
-# On utilise tsx pour lancer le TypeScript en prod ou la version compilée
-# Ici, on lance server.ts directement avec npx tsx pour simplifier
-pm2 start "npx tsx server.ts" --name "$PROJECT_NAME"
+# On lance la version compilée pour plus de performance
+pm2 start "npm start" --name "$PROJECT_NAME"
 
 # Sauvegarde pour redémarrage automatique après reboot VPS
 pm2 save
