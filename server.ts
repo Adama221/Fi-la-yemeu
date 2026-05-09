@@ -13,8 +13,11 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 
 dotenv.config();
 
-// Serve uploads folder at root
-const uploadsDir = path.join(process.cwd(), 'uploads');
+// Robust path resolution for Hostinger
+const ROOT_DIR = process.cwd();
+const distPath = path.resolve(ROOT_DIR, 'dist');
+const uploadsDir = path.resolve(ROOT_DIR, 'uploads');
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -24,14 +27,24 @@ const upload = multer({ dest: uploadsDir });
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-pour-samabutik';
 
 async function startServer() {
-  console.log('Starting DB initialization...');
+  console.log(`Server starting in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(`Root directory: ${ROOT_DIR}`);
+  
   const db = await initDb();
-  console.log('DB initialized successfully');
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  const PORT = process.env.PORT || 3000;
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+  
+  // Debug middleware for Hostinger issues
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    }
+    next();
+  });
+
   app.use('/uploads', express.static(uploadsDir));
 
   app.post('/api/auth/google', async (req, res) => {
@@ -585,20 +598,23 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // Serve frontend from dist folder (since server is now run from project root, process.cwd() is safe)
-    const distPath = path.join(process.cwd(), 'dist');
+    // Serve frontend from dist folder (absolute path resolved at startup)
     if (fs.existsSync(distPath)) {
+      console.log(`Serving static files from: ${distPath}`);
       app.use(express.static(distPath));
       app.get('*', (req, res) => {
-        const indexPath = path.join(distPath, 'index.html');
+        const indexPath = path.resolve(distPath, 'index.html');
         if (fs.existsSync(indexPath)) {
           res.sendFile(indexPath);
         } else {
-          res.status(404).json({ error: "Frontend not built. index.html not found." });
+          res.status(404).send('Frontend index.html non trouvé dans ' + distPath);
         }
       });
     } else {
-      console.warn('Production build folder not found at ' + distPath + '. Serving API only.');
+      console.error(`Dossier de production non trouvé: ${distPath}`);
+      app.get('*', (req, res) => {
+        res.status(404).send('Application non prête (dist manquant). Veuillez lancer npm run build.');
+      });
     }
   }
 
