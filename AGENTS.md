@@ -5,7 +5,7 @@ Application e-commerce complète avec tableau de bord administrateur, gestion de
 
 ## Backend
 - Express.js (serveur complet sur le port 3000)
-- SQLite (better-sqlite3)
+- SQLite (sqlite3 + sqlite-library)
 - MCP intégré (Model Context Protocol)
 - Auth JWT
 

@@ -572,11 +572,8 @@ async function startServer() {
   app.get('/api/health', (req, res) => {
     res.json({ 
       status: 'ok', 
-      timestamp: new Date().toISOString(),
-      tech_info: {
-        admin_default: 'pape@samabutik.com / Pape221',
-        supabase_redirect: 'https://tepsspmrqgvkzxzfbrcx.supabase.co/auth/v1/callback'
-      }
+      server: 'SamaButik Node.js (Hostinger Ready)',
+      timestamp: new Date().toISOString()
     });
   });
 

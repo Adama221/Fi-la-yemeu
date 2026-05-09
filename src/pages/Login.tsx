@@ -3,15 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [configHelp, setConfigHelp] = useState<{ siteUrl: string, callbackUrl: string } | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
   const { profile, login } = useAuth();
   const navigate = useNavigate();
 
@@ -124,34 +121,6 @@ export default function Login() {
         </form>
 
         <div className="mt-8 pt-6 border-t border-stone-50 text-center space-y-4">
-          <button 
-            onClick={() => setShowHelp(!showHelp)}
-            className="text-[9px] uppercase tracking-widest text-text-deep/20 hover:text-secondary transition-colors font-bold"
-          >
-            {showHelp ? "Masquer l'aide technique" : "Besoin d'aide pour la connexion ?"}
-          </button>
-
-          {showHelp && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="p-4 bg-stone-50 border border-stone-100 rounded-2xl text-left"
-            >
-               <p className="text-[8px] font-bold uppercase text-stone-400 mb-3 tracking-widest">Configuration OAuth Supabase</p>
-               <div className="space-y-3">
-                  <div>
-                    <p className="text-[7px] uppercase text-stone-400 font-bold mb-1">Site URL:</p>
-                    <code className="text-[9px] block bg-white p-2 rounded border border-stone-100 break-all select-all">{window.location.origin}</code>
-                  </div>
-                  <div>
-                    <p className="text-[7px] uppercase text-stone-400 font-bold mb-1">Redirect URI:</p>
-                    <code className="text-[9px] block bg-white p-2 rounded border border-stone-100 break-all select-all">https://tepsspmrqgvkzxzfbrcx.supabase.co/auth/v1/callback</code>
-                  </div>
-                  <p className="text-[8px] text-stone-400 italic leading-relaxed">Utilisez "pape@samabutik.com" / "Pape2210" pour l'accès administrateur par défaut.</p>
-               </div>
-            </motion.div>
-          )}
-
           <p className="text-[10px] text-text-deep/60">
             Vous n'avez pas de compte ?{' '}
             <Link to="/register" className="text-secondary font-bold hover:underline">
