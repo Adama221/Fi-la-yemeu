@@ -4,11 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import multer from 'multer';
-import { v4 as uuidv4 } from 'uuid';
 import { initDb } from './src/database';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import { setupMcpServer } from './src/mcp';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse';
 
@@ -31,49 +27,16 @@ const distPath = path.resolve(ROOT_DIR, 'dist');
 const uploadsDir = path.resolve(ROOT_DIR, 'uploads');
 const dataDir = path.resolve(ROOT_DIR, 'data');
 
-console.log('--- DIAGNOSTIC HOSTINGER ---');
-console.log('Current CWD:', ROOT_DIR);
-console.log('Target Dist Path:', distPath);
-console.log('Dist Folder Exists:', fs.existsSync(distPath));
-if (fs.existsSync(distPath)) {
-  console.log('Files in Dist:', fs.readdirSync(distPath));
-}
-console.log('---------------------------');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
-// Redirect stdout/stderr to a file in production for Hostinger debugging
+// Logging for production
 if (process.env.NODE_ENV === 'production') {
-  const logFile = path.resolve(ROOT_DIR, 'data', 'server.log');
-  if (!fs.existsSync(path.dirname(logFile))) fs.mkdirSync(path.dirname(logFile), { recursive: true });
-  const logStream = fs.createWriteStream(logFile, { flags: 'a' });
-  
-  process.stdout.write = (chunk: any) => {
-    logStream.write(`[${new Date().toISOString()}] STDOUT: ${chunk}`);
-    return true;
-  };
-  process.stderr.write = (chunk: any) => {
-    logStream.write(`[${new Date().toISOString()}] STDERR: ${chunk}`);
-    return true;
-  };
-
   console.log('--- PRODUCTION STARTUP ---');
   console.log('CWD:', ROOT_DIR);
 }
 
-const upload = multer({ dest: uploadsDir });
-
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-pour-samabutik';
-
 async function startServer() {
-  console.log(`Server starting in ${process.env.NODE_ENV || 'development'} mode`);
-  console.log(`Root directory: ${ROOT_DIR}`);
-  
   const db = await initDb();
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
@@ -101,7 +64,7 @@ async function startServer() {
   app.use('/uploads', express.static(uploadsDir));
 
   // --- API ROUTES ---
-  const { createApiRouter } = await import('./src/api-routes');
+  const { createApiRouter } = await import('./src/routes/index');
   app.use('/api', createApiRouter(db, uploadsDir));
 
   // API 404 Handler (Must be after all API routes but before frontend routes)
