@@ -4,11 +4,24 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 
 export async function initDb() {
-  const dataDir = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
+  const isReadOnlyEnv = !!process.env.K_SERVICE || !!process.env.VERCEL;
+  const dataDir = isReadOnlyEnv ? '/tmp/data' : path.join(process.cwd(), 'data');
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
   const dbPath = path.join(dataDir, 'database.sqlite');
+  
+  if (isReadOnlyEnv) {
+    const originalDbPath = path.join(process.cwd(), 'data', 'database.sqlite');
+    if (fs.existsSync(originalDbPath) && !fs.existsSync(dbPath)) {
+      try {
+        fs.copyFileSync(originalDbPath, dbPath);
+        console.log('Copied database to /tmp/data/database.sqlite for read-only environment');
+      } catch (e) {
+        console.error('Failed to copy initial database:', e);
+      }
+    }
+  }
   
   let sqlite3;
   try {

@@ -25,8 +25,9 @@ const getPaths = () => {
 const { filename: CURRENT_FILE, dirname: CURRENT_DIR } = getPaths();
 const ROOT_DIR = CURRENT_FILE.includes('dist') ? path.resolve(CURRENT_DIR, '..') : process.cwd();
 const distPath = path.resolve(ROOT_DIR, 'dist');
-const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : path.resolve(ROOT_DIR, 'uploads');
-const dataDir = process.env.VERCEL ? '/tmp/data' : path.resolve(ROOT_DIR, 'data');
+const isReadOnlyEnv = !!process.env.K_SERVICE || !!process.env.VERCEL;
+const uploadsDir = isReadOnlyEnv ? '/tmp/uploads' : path.resolve(ROOT_DIR, 'uploads');
+const dataDir = isReadOnlyEnv ? '/tmp/data' : path.resolve(ROOT_DIR, 'data');
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -116,7 +117,7 @@ async function startServer() {
   // Global Express Error Handler
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     console.error('Unhandled server error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: err?.message, stack: err?.stack });
   });
 
   // Only listen if not in a test environment or Vercel
