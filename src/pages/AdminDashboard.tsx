@@ -40,6 +40,7 @@ export default function AdminDashboard() {
 
   const [notification, setNotification] = useState<{message: string, isError: boolean} | null>(null);
   const [productToDelete, setProductToDelete] = useState<string | number | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const showNotification = (message: string, isError = false) => {
     setNotification({ message, isError });
@@ -297,6 +298,10 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
     await handleAuthLogout();
     navigate('/login');
   };
@@ -306,10 +311,10 @@ export default function AdminDashboard() {
   };
 
   const stats = [
-    { title: 'Ventes Totales', value: formatPrice(statsData.revenue), icon: <DollarSign className="w-5 h-5 text-green-500" />, trend: 'Global' },
-    { title: 'Commandes', value: statsData.orders.toString(), icon: <ShoppingCart className="w-5 h-5 text-blue-500" />, trend: 'Enregistré' },
-    { title: 'Affiliés', value: affiliates.length.toString(), icon: <Users className="w-5 h-5 text-purple-500" />, trend: 'Inscrits' },
-    { title: 'Produits', value: statsData.products.toString(), icon: <Package className="w-5 h-5 text-orange-500" />, trend: 'Katalog' },
+    { title: 'Ventes Totales', value: formatPrice(statsData.revenue), icon: <DollarSign className="w-5 h-5 text-green-500" />, trend: 'Global', tab: 'dashboard' },
+    { title: 'Commandes', value: statsData.orders.toString(), icon: <ShoppingCart className="w-5 h-5 text-blue-500" />, trend: 'Enregistré', tab: 'orders' },
+    { title: 'Affiliés', value: affiliates.length.toString(), icon: <Users className="w-5 h-5 text-purple-500" />, trend: 'Inscrits', tab: 'affiliates' },
+    { title: 'Produits', value: statsData.products.toString(), icon: <Package className="w-5 h-5 text-orange-500" />, trend: 'Katalog', tab: 'products' },
   ];
 
   return (
@@ -323,6 +328,7 @@ export default function AdminDashboard() {
 
         <nav className="flex md:flex-col overflow-x-auto md:overflow-x-visible px-4 md:px-6 md:space-y-3 pb-4 md:pb-0 gap-2 md:gap-0 no-scrollbar">
           <button 
+            id="tab-dashboard"
             onClick={() => setActiveTab('dashboard')}
             className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'dashboard' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
@@ -331,6 +337,7 @@ export default function AdminDashboard() {
           </button>
           
           <button 
+            id="tab-products"
             onClick={() => setActiveTab('products')}
             className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'products' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
@@ -339,6 +346,7 @@ export default function AdminDashboard() {
           </button>
 
           <button 
+            id="tab-orders"
             onClick={() => setActiveTab('orders')}
             className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'orders' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
@@ -347,6 +355,7 @@ export default function AdminDashboard() {
           </button>
 
           <button 
+            id="tab-affiliates"
             onClick={() => setActiveTab('affiliates')}
             className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'affiliates' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
@@ -355,6 +364,7 @@ export default function AdminDashboard() {
           </button>
 
           <button 
+            id="tab-commissions"
             onClick={() => setActiveTab('commissions')}
             className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'commissions' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
@@ -363,6 +373,7 @@ export default function AdminDashboard() {
           </button>
 
           <button 
+            id="tab-branding"
             onClick={() => setActiveTab('branding')}
             className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'branding' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
@@ -371,6 +382,7 @@ export default function AdminDashboard() {
           </button>
 
           <button 
+            id="tab-payments"
             onClick={() => setActiveTab('payments')}
             className={`flex-shrink-0 w-auto md:w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'payments' ? 'bg-secondary text-white shadow-xl scale-105' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
           >
@@ -458,7 +470,8 @@ export default function AdminDashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                     key={i} 
-                    className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-primary/5 border border-primary/5 group hover:scale-105 transition-all duration-500 flex flex-col justify-between min-h-[180px]"
+                    onClick={() => setActiveTab(stat.tab)}
+                    className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-primary/5 border border-primary/5 group hover:scale-105 transition-all duration-500 flex flex-col justify-between min-h-[180px] cursor-pointer"
                  >
                     <div className="flex justify-between items-start mb-4">
                        <div className="w-12 h-12 bg-accent-soft rounded-2xl flex items-center justify-center group-hover:bg-secondary transition-colors duration-500 group-hover:text-white shadow-sm shrink-0">{stat.icon}</div>
@@ -1088,6 +1101,42 @@ export default function AdminDashboard() {
                   className="flex-1 py-4 bg-red-500 text-white rounded-2xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
                 >
                   Supprimer
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <>
+            <div 
+              className="fixed inset-0 bg-primary/40 backdrop-blur-sm z-[80]"
+              onClick={() => setShowLogoutConfirm(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-[2rem] shadow-2xl p-8 z-[90] text-center"
+            >
+              <LogOut className="w-12 h-12 text-secondary mx-auto mb-6 opacity-80" />
+              <h3 className="text-xl font-serif italic text-primary/80 mb-2">Se déconnecter ?</h3>
+              <p className="text-sm text-primary/60 mb-8">Êtes-vous sûr de vouloir quitter votre session administrateur ?</p>
+              <div className="flex gap-4 text-[10px] uppercase tracking-widest font-bold">
+                <button 
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-4 bg-background-warm border-primary/5 rounded-2xl text-primary/60 hover:bg-gray-100 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button 
+                  onClick={confirmLogout}
+                  className="flex-1 py-4 bg-primary text-white rounded-full hover:bg-secondary transition-colors shadow-lg shadow-primary/20"
+                >
+                  Quitter
                 </button>
               </div>
             </motion.div>

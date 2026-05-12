@@ -1,9 +1,9 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types';
+} from '@modelcontextprotocol/sdk/types.js';
 import { initDb } from './database';
 
 export async function setupMcpServer() {

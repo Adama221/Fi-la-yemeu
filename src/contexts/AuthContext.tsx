@@ -34,26 +34,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const token = localStorage.getItem('auth_token');
         const storedUser = localStorage.getItem('auth_user');
         
-        if (token && storedUser) {
+        if (token) {
+          // Verify with server
           try {
-            const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
-            // Construct profile from stored data
-            const adminEmails = ['78177233ds@gmail.com', 'papesamabutik@gmail.com', 'pape@samabutik.com'];
-            const role = adminEmails.includes(parsedUser.email?.toLowerCase()) ? 'admin' : (parsedUser.role || 'client');
-            
-            setProfile({
-              id: parsedUser.id,
-              email: parsedUser.email || '',
-              role: role,
-              full_name: parsedUser.username || parsedUser.full_name || parsedUser.email?.split('@')[0],
-              phone: parsedUser.phone || '',
-              created_at: parsedUser.created_at || new Date().toISOString()
+            const res = await fetch('/api/auth/me', {
+              headers: { 'Authorization': `Bearer ${token}` }
             });
+            if (res.ok) {
+              const { user: serverUser } = await res.json();
+              setUser(serverUser);
+              
+              const adminEmails = ['78177233ds@gmail.com', 'papesamabutik@gmail.com', 'pape@samabutik.com'];
+              const role = adminEmails.includes(serverUser.email?.toLowerCase()) ? 'admin' : (serverUser.role || 'client');
+              
+              setProfile({
+                id: serverUser.id,
+                email: serverUser.email || '',
+                role: role,
+                full_name: serverUser.username || serverUser.full_name || serverUser.email?.split('@')[0],
+                phone: serverUser.phone || '',
+                created_at: serverUser.created_at || new Date().toISOString()
+              });
+              
+              localStorage.setItem('auth_user', JSON.stringify(serverUser));
+            } else {
+              // Token invalid
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('auth_user');
+            }
           } catch (e) {
-            console.error('Failed to parse stored user', e);
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('auth_user');
+            console.warn('Silent auth check failed, falling back to local fallback', e);
+            if (storedUser) {
+              const parsedUser = JSON.parse(storedUser);
+              setUser(parsedUser);
+              const adminEmails = ['78177233ds@gmail.com', 'papesamabutik@gmail.com', 'pape@samabutik.com'];
+              const role = adminEmails.includes(parsedUser.email?.toLowerCase()) ? 'admin' : (parsedUser.role || 'client');
+              setProfile({
+                id: parsedUser.id,
+                email: parsedUser.email || '',
+                role: role,
+                full_name: parsedUser.username || parsedUser.full_name || parsedUser.email?.split('@')[0],
+                phone: parsedUser.phone || '',
+                created_at: parsedUser.created_at || new Date().toISOString()
+              });
+            }
           }
         }
       } catch (err) {

@@ -51,14 +51,14 @@ export default function Home() {
             <p className="text-xs uppercase tracking-[0.3em] font-medium text-secondary mb-6 pl-1 animate-fade-in-up">
                Maison de Couture
             </p>
-            <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-[8rem] font-serif text-primary leading-[0.85] tracking-tight mb-6 md:mb-8">
-              {settings?.homepageText || "Élégance\nIntemporelle."}
+            <h1 id="home-title" className="text-5xl sm:text-6xl md:text-8xl lg:text-[8rem] font-serif text-primary leading-[0.85] tracking-tight mb-6 md:mb-8">
+              {settings?.homepageText || "Boubous Modernes\n& Élégance."}
             </h1>
           </div>
           
           <div className="max-w-sm md:text-right flex flex-col md:items-end w-full">
-             <p className="text-base md:text-lg font-sans text-primary/70 leading-relaxed font-light text-balance mb-8">
-               Découvrez notre collection exclusive. Chaque pièce est pensée pour sublimer votre allure avec raffinement.
+             <p id="home-description" className="text-base md:text-lg font-sans text-primary/70 leading-relaxed font-light text-balance mb-8">
+               Découvrez notre collection exclusive de boubous modernes et tenues tendance. Chaque pièce est pensée pour sublimer votre allure avec raffinement.
              </p>
              <Link to="/products" className="inline-flex items-center gap-3 border-b border-primary/30 pb-2 group hover:border-primary transition-colors">
                <span className="text-xs uppercase tracking-[0.2em] font-medium text-primary group-hover:text-secondary transition-colors">Explorer la collection</span>

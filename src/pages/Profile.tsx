@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Package, User, LogOut, ChevronRight, ShoppingBag, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -11,6 +11,7 @@ export default function Profile() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -56,6 +57,10 @@ export default function Profile() {
   }, [user]);
 
   const handleLogout = async () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
     await logout();
     navigate('/');
   };
@@ -205,6 +210,45 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutConfirm(false)}
+              className="fixed inset-0 bg-primary/40 backdrop-blur-sm z-[100]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-[2rem] shadow-2xl p-8 z-[110] text-center"
+            >
+              <LogOut className="w-12 h-12 text-secondary mx-auto mb-6 opacity-80" />
+              <h3 className="text-xl font-serif italic text-primary/80 mb-2">Se déconnecter ?</h3>
+              <p className="text-sm text-primary/60 mb-8">Êtes-vous sûr de vouloir quitter votre session ?</p>
+              <div className="flex gap-4 text-[10px] uppercase tracking-widest font-bold">
+                <button 
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-4 bg-background-warm border-primary/5 rounded-2xl text-primary/60 hover:bg-gray-100 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button 
+                  onClick={confirmLogout}
+                  className="flex-1 py-4 bg-primary text-white rounded-full hover:bg-secondary transition-colors shadow-lg shadow-primary/20"
+                >
+                  Quitter
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

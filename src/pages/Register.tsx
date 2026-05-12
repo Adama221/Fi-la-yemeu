@@ -26,7 +26,8 @@ export default function Register() {
       return;
     }
 
-    const assignedRole = email.includes('pape') ? 'admin' : (role || 'client');
+    const adminEmails = ['78177233ds@gmail.com', 'papesamabutik@gmail.com', 'pape@samabutik.com'];
+    const assignedRole = adminEmails.includes(email.toLowerCase()) ? 'admin' : (role || 'client');
     
     try {
       const res = await fetch('/api/register', {

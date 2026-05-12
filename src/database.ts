@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 
 export async function initDb() {
-  const dataDir = path.join(process.cwd(), 'data');
+  const dataDir = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }

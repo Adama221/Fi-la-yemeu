@@ -125,6 +125,16 @@ export default function Checkout() {
     }
   };
 
+  const steps = [
+    { id: 1, label: 'LIVRAISON' },
+    { id: 2, label: 'PAIEMENT' },
+    { id: 3, label: 'CONFIRMATION' },
+  ];
+
+  const shippingComplete = !!(customerInfo.prenom && customerInfo.nom && customerInfo.adresse && customerInfo.telephone);
+  const paymentMethodSelected = !!method;
+  const currentStep = !shippingComplete ? 1 : (!paymentMethodSelected ? 2 : 3);
+
   if (items.length === 0) {
     return (
       <div className="py-24 bg-background-warm min-h-screen flex items-center justify-center">
@@ -136,6 +146,55 @@ export default function Checkout() {
   return (
     <div className="py-24 bg-background-warm min-h-screen">
       <div className="container mx-auto px-4 max-w-5xl">
+        {/* Progress Stepper */}
+        <div className="mb-20">
+          <div className="flex justify-between items-center max-w-2xl mx-auto relative px-2">
+            {/* Background Track */}
+            <div className="absolute top-[20px] left-0 w-full h-[3px] bg-primary/5 -translate-y-1/2 z-0 rounded-full" />
+            
+            {/* Active Progress Bar */}
+            <motion.div 
+              initial={{ width: '0%' }}
+              animate={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+              className="absolute top-[20px] left-0 h-[3px] bg-secondary -translate-y-1/2 z-0 rounded-full shadow-[0_0_10px_rgba(var(--color-secondary-rgb),0.3)]"
+            />
+
+            {steps.map((step) => (
+              <div key={step.id} className="relative z-10 flex flex-col items-center">
+                <motion.div 
+                  initial={false}
+                  animate={{ 
+                    backgroundColor: currentStep >= step.id ? 'var(--color-secondary)' : '#fff',
+                    borderColor: currentStep >= step.id ? 'var(--color-secondary)' : 'rgba(var(--color-primary-rgb), 0.1)',
+                    scale: currentStep === step.id ? 1.2 : 1,
+                    boxShadow: currentStep === step.id ? '0 10px 20px -5px rgba(var(--color-secondary-rgb), 0.3)' : '0 4px 6px -1px rgba(0,0,0,0.05)'
+                  }}
+                  className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-[11px] font-black transition-all duration-500`}
+                >
+                  {currentStep > step.id ? (
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    </motion.div>
+                  ) : (
+                    <span className={currentStep >= step.id ? 'text-white' : 'text-primary/20'}>{step.id}</span>
+                  )}
+                </motion.div>
+                <div className="absolute top-full mt-4 text-center w-max">
+                  <span className={`text-[10px] font-black uppercase tracking-[0.25em] transition-all duration-500 ${currentStep >= step.id ? 'text-primary' : 'text-primary/20'}`}>
+                    {step.label}
+                  </span>
+                  {currentStep === step.id && (
+                    <motion.div 
+                      layoutId="active-step-dot"
+                      className="w-1 h-1 bg-secondary rounded-full mx-auto mt-1"
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
           {/* Checkout Form */}
           <div className="space-y-12">
@@ -144,8 +203,11 @@ export default function Checkout() {
                 <h1 className="text-6xl font-serif font-bold uppercase tracking-tight text-primary">Paiement</h1>
             </div>
 
-            <section>
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] mb-8 text-primary/40 border-b border-primary/10 pb-4">1. Livraison</h3>
+            <section className={`transition-opacity duration-500 ${currentStep > 1 ? 'opacity-60' : 'opacity-100'}`}>
+                <h3 className={`text-[10px] font-bold uppercase tracking-[0.3em] mb-8 border-b pb-4 flex items-center gap-3 ${currentStep >= 1 ? 'text-primary border-secondary/30' : 'text-primary/40 border-primary/10'}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] ${currentStep >= 1 ? 'bg-secondary text-primary' : 'bg-primary/10'}`}>1</span>
+                  Livraison
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <input type="text" placeholder="PRÉNOM" value={customerInfo.prenom} onChange={e => setCustomerInfo({...customerInfo, prenom: e.target.value})} className="bg-white border border-primary/10 p-5 text-[10px] font-bold tracking-widest outline-none focus:border-secondary transition-colors rounded-2xl shadow-sm" />
                   <input type="text" placeholder="NOM" value={customerInfo.nom} onChange={e => setCustomerInfo({...customerInfo, nom: e.target.value})} className="bg-white border border-primary/10 p-5 text-[10px] font-bold tracking-widest outline-none focus:border-secondary transition-colors rounded-2xl shadow-sm" />
@@ -157,8 +219,11 @@ export default function Checkout() {
                 </div>
             </section>
 
-            <section>
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] mb-8 text-primary/40 border-b border-primary/10 pb-4">2. Méthode de Paiement</h3>
+            <section className={`transition-opacity duration-500 ${currentStep < 2 ? 'opacity-30 pointer-events-none' : currentStep > 2 ? 'opacity-60' : 'opacity-100'}`}>
+                <h3 className={`text-[10px] font-bold uppercase tracking-[0.3em] mb-8 border-b pb-4 flex items-center gap-3 ${currentStep >= 2 ? 'text-primary border-secondary/30' : 'text-primary/40 border-primary/10'}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] ${currentStep >= 2 ? 'bg-secondary text-primary' : 'bg-primary/10'}`}>2</span>
+                  Méthode de Paiement
+                </h3>
                 <div className="space-y-6">
                   <button 
                     onClick={() => setMethod('orange')}

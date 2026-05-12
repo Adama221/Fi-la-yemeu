@@ -9,6 +9,7 @@ import { useCart } from '../contexts/CartContext';
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { user, profile, logout, isAdmin } = useAuth();
   const { settings } = useSettings();
   const { itemsCount } = useCart();
@@ -80,7 +81,7 @@ export default function Header() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-primary leading-none mb-1 group-hover/user:text-secondary transition-colors">{profile?.full_name || user.user_metadata?.full_name || 'Client'}</p>
                   <p className="text-[8px] uppercase tracking-wider text-secondary font-medium leading-none">{profile?.role || 'Membre'}</p>
                </Link>
-               <button onClick={() => logout()} className="w-10 h-10 rounded-full border border-primary/20 flex items-center justify-center hover:bg-primary hover:text-white transition-all hover:border-primary group">
+               <button onClick={() => setShowLogoutConfirm(true)} className="w-10 h-10 rounded-full border border-primary/20 flex items-center justify-center hover:bg-primary hover:text-white transition-all hover:border-primary group">
                   <LogOut className="w-4 h-4 text-primary group-hover:text-white" />
                </button>
             </div>
@@ -120,7 +121,7 @@ export default function Header() {
                       <p className="text-[10px] font-bold uppercase tracking-widest text-primary leading-none mb-1">{profile?.full_name || user.user_metadata?.full_name || 'Client'}</p>
                       <p className="text-[8px] uppercase tracking-wider text-secondary font-medium leading-none">{profile?.role || 'Membre'}</p>
                     </div>
-                    <button onClick={() => { logout(); setIsMenuOpen(false); }} className="text-xs uppercase tracking-widest font-bold text-red-500 flex items-center gap-2">
+                    <button onClick={() => { setShowLogoutConfirm(true); setIsMenuOpen(false); }} className="text-xs uppercase tracking-widest font-bold text-red-500 flex items-center gap-2">
                        Déconnexion <LogOut size={14} />
                     </button>
                  </div>
@@ -131,6 +132,48 @@ export default function Header() {
               )}
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutConfirm(false)}
+              className="fixed inset-0 bg-primary/40 backdrop-blur-sm z-[100]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-[2rem] shadow-2xl p-8 z-[110] text-center"
+            >
+              <LogOut className="w-12 h-12 text-secondary mx-auto mb-6 opacity-80" />
+              <h3 className="text-xl font-serif italic text-primary/80 mb-2">Se déconnecter ?</h3>
+              <p className="text-sm text-primary/60 mb-8">Êtes-vous sûr de vouloir quitter votre session ?</p>
+              <div className="flex gap-4 text-[10px] uppercase tracking-widest font-bold">
+                <button 
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-4 bg-background-warm border-primary/5 rounded-2xl text-primary/60 hover:bg-gray-100 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button 
+                  onClick={() => {
+                    logout();
+                    setShowLogoutConfirm(false);
+                  }}
+                  className="flex-1 py-4 bg-primary text-white rounded-full hover:bg-secondary transition-colors shadow-lg shadow-primary/20"
+                >
+                  Quitter
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </header>

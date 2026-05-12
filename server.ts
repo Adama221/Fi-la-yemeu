@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { initDb } from './src/database';
 import { setupMcpServer } from './src/mcp';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/index.js';
+import { createApiRouter } from './src/routes/index';
 
 dotenv.config();
 
@@ -24,8 +25,8 @@ const getPaths = () => {
 const { filename: CURRENT_FILE, dirname: CURRENT_DIR } = getPaths();
 const ROOT_DIR = CURRENT_FILE.includes('dist') ? path.resolve(CURRENT_DIR, '..') : process.cwd();
 const distPath = path.resolve(ROOT_DIR, 'dist');
-const uploadsDir = path.resolve(ROOT_DIR, 'uploads');
-const dataDir = path.resolve(ROOT_DIR, 'data');
+const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : path.resolve(ROOT_DIR, 'uploads');
+const dataDir = process.env.VERCEL ? '/tmp/data' : path.resolve(ROOT_DIR, 'data');
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -44,7 +45,10 @@ async function startServer() {
   // 1. Logging Middleware (PRIORITY)
   app.use((req, res, next) => {
     if (req.url.startsWith('/api')) {
-      console.log(`[API REQUEST] ${req.method} ${req.url}`);
+      console.log(`[API REQUEST] ${req.method} ${req.url} - ${new Date().toISOString()}`);
+      if (req.method === 'POST') {
+        console.log(`[API BODY]`, { ...req.body, password: '***' });
+      }
     }
     next();
   });
@@ -64,7 +68,6 @@ async function startServer() {
   app.use('/uploads', express.static(uploadsDir));
 
   // --- API ROUTES ---
-  const { createApiRouter } = await import('./src/routes/index');
   app.use('/api', createApiRouter(db, uploadsDir));
 
   // API 404 Handler (Must be after all API routes but before frontend routes)
@@ -93,7 +96,9 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
+    console.log(`[PROD] Searching frontend in: ${distPath}`);
     if (fs.existsSync(distPath)) {
+      console.log(`[PROD] Found dist folder at: ${distPath}`);
       app.use(express.static(distPath, { index: false }));
       app.get('*', (req, res) => {
         // Skip already handled paths
@@ -127,7 +132,10 @@ async function startServer() {
 export default startServer;
 
 // Start the server if this file is run directly
-const isMain = import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('server.ts');
+const isMain = 
+  (typeof require !== 'undefined' && require.main === module) || 
+  (process.argv[1] && (process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.cjs')));
+
 if (isMain && !process.env.VERCEL) {
   startServer().catch(err => {
     console.error("Critical error during server boot:", err);
