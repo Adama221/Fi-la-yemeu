@@ -1,4 +1,4 @@
-import startServer from '../server.ts';
+import startServer from '../server.js';
 
 let app: any;
 

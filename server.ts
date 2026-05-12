@@ -4,10 +4,10 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { initDb } from './src/database';
-import { setupMcpServer } from './src/mcp';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/index.js';
-import { createApiRouter } from './src/routes/index';
+import { initDb } from './src/database.js';
+import { setupMcpServer } from './src/mcp.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { createApiRouter } from './src/routes/index.js';
 
 dotenv.config();
 
