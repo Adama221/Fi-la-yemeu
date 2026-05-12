@@ -5,8 +5,6 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { initDb } from './src/database';
-import { setupMcpServer } from './src/mcp';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { createApiRouter } from './src/routes/index';
 
 dotenv.config();
@@ -83,18 +81,6 @@ async function startServer() {
   // API 404 Handler (Must be after all API routes but before frontend routes)
   app.all('/api/*', (req, res) => {
     res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
-  });
-
-  // --- MCP Server ---
-  const mcpServer = await setupMcpServer();
-  let transport: SSEServerTransport | null = null;
-  app.get('/mcp/messages', async (req, res) => {
-    transport = new SSEServerTransport('/mcp/messages', res);
-    await mcpServer.connect(transport);
-  });
-  app.post('/mcp/messages', async (req, res) => {
-    if (transport) await transport.handlePostMessage(req, res);
-    else res.status(400).send('MCP not initialized');
   });
 
   // --- FRONTEND ROUTES ---

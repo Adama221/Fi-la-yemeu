@@ -2,6 +2,7 @@ import { open } from 'sqlite';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
+import sqlite3 from 'sqlite3';
 
 export async function initDb() {
   const isReadOnlyEnv = !!process.env.K_SERVICE || !!process.env.VERCEL;
@@ -31,28 +32,7 @@ export async function initDb() {
     }
   }
   
-  let sqlite3;
-  console.log('[initDb] Loading sqlite3 module...');
-  try {
-    const sqlite3Module = await import('sqlite3');
-    sqlite3 = sqlite3Module.default || sqlite3Module;
-    console.log('[initDb] sqlite3 module loaded, keys:', Object.keys(sqlite3));
-    
-    if (!sqlite3.Database) {
-      // Fallback for some bundling environments
-      if (sqlite3.verbose) {
-        console.log('[initDb] Using sqlite3.verbose().Database');
-        sqlite3 = sqlite3.verbose();
-      }
-    }
-    
-    if (!sqlite3.Database) {
-      throw new Error("sqlite3.Database is undefined after loading.");
-    }
-  } catch (err: any) {
-    console.error("Failed to load sqlite3 native module.", err);
-    throw new Error(`Erreur de chargement du module SQLite: ${err.message}`);
-  }
+  console.log('[initDb] sqlite3 module loaded');
 
   let db;
   console.log('[initDb] Opening database...');
