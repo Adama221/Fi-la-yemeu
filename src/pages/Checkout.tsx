@@ -59,12 +59,12 @@ export default function Checkout() {
           const errData = await res.json();
           throw new Error(errData.error || "Erreur lors de la création de la commande");
         } else {
-          throw new Error("L'API de commande est inaccessible (Reçu HTML au lieu de JSON).");
+          throw new Error(`Erreur réseau ou API indisponible (${res.status}).`);
         }
       }
 
       if (!contentType || !contentType.includes('application/json')) {
-        throw new Error("Réponse API invalide lors de la commande.");
+        throw new Error("Erreur de format de réponse API.");
       }
 
       const data = await res.json();

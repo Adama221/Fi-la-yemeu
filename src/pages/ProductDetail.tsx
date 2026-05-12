@@ -25,12 +25,12 @@ export default function ProductDetail() {
             const errData = await response.json();
             throw new Error(errData.error || 'Not found');
           } else {
-            throw new Error('Le serveur API est mal configuré (Reçu du HTML au lieu de JSON).');
+            throw new Error(`Erreur API (${response.status})`);
           }
         }
 
         if (!contentType || !contentType.includes('application/json')) {
-           throw new Error("Réponse API invalide : Reçu du HTML au lieu de JSON.");
+           throw new Error("Erreur format de réponse API.");
         }
 
         const data = await response.json();

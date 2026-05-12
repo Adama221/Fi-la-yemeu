@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { adminRequired } from './middleware';
+import { adminRequired } from '../routes/middleware';
 import multer from 'multer';
 
 export function adminRoutes(db: any, uploadsDir: string) {

@@ -25,12 +25,12 @@ export default function Products() {
            const errData = await response.json();
            throw new Error(errData.error || `Erreur ${response.status}`);
         } else {
-           throw new Error(`Le serveur API n'a pas répondu correctement (Status: ${response.status}). Vérifiez le déploiement.`);
+           throw new Error(`Erreur API (${response.status}).`);
         }
       }
 
       if (!contentType || !contentType.includes('application/json')) {
-        throw new Error("Réponse API invalide : Reçu du HTML au lieu de JSON.");
+        throw new Error("Erreur de format de réponse API.");
       }
 
       const data = await response.json();

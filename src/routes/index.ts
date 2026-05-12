@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authRoutes } from './auth';
 import { productRoutes, userActionsRoutes } from './products';
 import { orderRoutes, newsletterRoutes } from './orders';
-import { adminRoutes } from './admin';
+import { adminRoutes } from '../pages/admin';
 import { affiliateRoutes } from './affiliate';
 
 export function createApiRouter(db: any, uploadsDir: string) {

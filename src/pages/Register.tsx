@@ -47,7 +47,7 @@ export default function Register() {
             errorMessage = `Erreur Serveur (${res.status}). Le serveur a envoyé une réponse invalide.`;
           }
         } else {
-          errorMessage = `Erreur de déploiement (Hostinger) : L'API n'est pas atteignable (Reçu une page web au lieu d'une réponse API). Le serveur Node.js doit être démarré ou le fichier .htaccess doit être corrigé.`;
+          errorMessage = `Erreur réseau ou API indisponible. Vérifiez la connexion.`;
         }
         throw new Error(errorMessage);
       }

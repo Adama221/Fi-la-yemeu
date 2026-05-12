@@ -3,7 +3,7 @@ import { LayoutDashboard, Package, ShoppingCart, Users, BadgePercent, LogOut, Ch
 import { Link, useNavigate } from 'react-router-dom';
 import { formatPrice } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import ImageUploader from '../components/ImageUploader';
+import ImageUploader from '../ImageUploader';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -65,7 +65,7 @@ export default function AdminDashboard() {
               const err = await dRes.json();
               throw new Error(err.error || `Erreur ${dRes.status}`);
            }
-           throw new Error(`Stats indisponibles (Status: ${dRes.status}). Vérifiez le serveur NODE.`);
+           throw new Error(`Stats indisponibles (Erreur ${dRes.status}).`);
         }
         
         if (dContentType && dContentType.includes('application/json')) {

@@ -23,12 +23,12 @@ export default function Home() {
           const errData = await response.json();
           throw new Error(errData.error || `Erreur ${response.status}`);
         } else {
-          throw new Error("Le serveur API n'a pas répondu correctement. Vérifiez votre déploiement Hostinger.");
+          throw new Error(`Erreur réseau ou API indisponible (${response.status}).`);
         }
       }
 
       if (!contentType || !contentType.includes('application/json')) {
-        throw new Error("Réponse API invalide : Reçu du HTML au lieu de JSON. Le Reverse Proxy est mal configuré.");
+        throw new Error("Erreur de format de réponse API.");
       }
 
       const data = await response.json();
