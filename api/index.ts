@@ -1,24 +1,25 @@
-import startServer from '../server.js';
+import startServer from '../server';
 
 let app: any;
 
 export default async function handler(req: any, res: any) {
-  console.log(`[Vercel] Handler called for ${req.method} ${req.url}`);
+  console.log(`[Vercel Handler] ${req.method} ${req.url}`);
   try {
     if (!app) {
-      console.log('[Vercel] Initializing startServer...');
+      console.log('[Vercel Handler] Initializing server...');
+      console.log('[Vercel Handler] Current directory:', process.cwd());
       app = await startServer();
-      console.log('[Vercel] app initialized successfully');
+      console.log('[Vercel Handler] Server initialized successfully');
     }
-    // Express app is a function (req, res) => { ... }
     return app(req, res);
   } catch (error: any) {
-    console.error('[Vercel] Fatal error in handler:', error);
+    console.error('[Vercel Handler] Fatal Error:', error);
     if (!res.headersSent) {
-      res.status(500).json({ 
-        error: 'Failed to initialize server', 
-        details: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      res.status(500).json({
+        error: 'Backend Initialization Failed',
+        message: error.message,
+        code: error.code,
+        stack: error.stack
       });
     }
   }

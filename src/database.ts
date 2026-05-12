@@ -5,16 +5,24 @@ import fs from 'fs';
 
 export async function initDb() {
   const isReadOnlyEnv = !!process.env.K_SERVICE || !!process.env.VERCEL;
+  console.log('[initDb] isReadOnlyEnv:', isReadOnlyEnv);
+  
   const dataDir = isReadOnlyEnv ? '/tmp/data' : path.join(process.cwd(), 'data');
+  console.log('[initDb] dataDir:', dataDir);
+  
   if (!fs.existsSync(dataDir)) {
+    console.log('[initDb] Creating dataDir...');
     fs.mkdirSync(dataDir, { recursive: true });
   }
   const dbPath = path.join(dataDir, 'database.sqlite');
+  console.log('[initDb] dbPath:', dbPath);
   
   if (isReadOnlyEnv) {
     const originalDbPath = path.join(process.cwd(), 'data', 'database.sqlite');
+    console.log('[initDb] Checking originalDbPath:', originalDbPath);
     if (fs.existsSync(originalDbPath) && !fs.existsSync(dbPath)) {
       try {
+        console.log('[initDb] Copying initial database...');
         fs.copyFileSync(originalDbPath, dbPath);
         console.log('Copied database to /tmp/data/database.sqlite for read-only environment');
       } catch (e) {
@@ -24,23 +32,40 @@ export async function initDb() {
   }
   
   let sqlite3;
+  console.log('[initDb] Loading sqlite3 module...');
   try {
     const sqlite3Module = await import('sqlite3');
     sqlite3 = sqlite3Module.default || sqlite3Module;
+    console.log('[initDb] sqlite3 module loaded, keys:', Object.keys(sqlite3));
+    
+    if (!sqlite3.Database) {
+      // Fallback for some bundling environments
+      if (sqlite3.verbose) {
+        console.log('[initDb] Using sqlite3.verbose().Database');
+        sqlite3 = sqlite3.verbose();
+      }
+    }
+    
+    if (!sqlite3.Database) {
+      throw new Error("sqlite3.Database is undefined after loading.");
+    }
   } catch (err: any) {
     console.error("Failed to load sqlite3 native module.", err);
-    throw new Error("Erreur de chargement du module SQLite.");
+    throw new Error(`Erreur de chargement du module SQLite: ${err.message}`);
   }
 
   let db;
+  console.log('[initDb] Opening database...');
   try {
     db = await open({
       filename: dbPath,
       driver: sqlite3.Database
     });
+    console.log('[initDb] Database opened');
 
     // Quick test query to verify integrity
     await db.get("PRAGMA schema_version");
+    console.log('[initDb] PRAGMA check passed');
   } catch (err: any) {
     if (err.message && err.message.includes('SQLITE_CORRUPT')) {
       console.warn("Database is corrupt. Deleting and recreating...");

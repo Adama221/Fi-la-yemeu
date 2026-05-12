@@ -4,10 +4,10 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { initDb } from './src/database.js';
-import { setupMcpServer } from './src/mcp.js';
+import { initDb } from './src/database';
+import { setupMcpServer } from './src/mcp';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import { createApiRouter } from './src/routes/index.js';
+import { createApiRouter } from './src/routes/index';
 
 dotenv.config();
 
@@ -39,7 +39,16 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 async function startServer() {
-  const db = await initDb();
+  console.log('[startServer] Starting database initialization...');
+  let db;
+  try {
+    db = await initDb();
+    console.log('[startServer] Database initialized successfully');
+  } catch (err) {
+    console.error('[startServer] Database initialization failed:', err);
+    throw err;
+  }
+  
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
@@ -89,28 +98,24 @@ async function startServer() {
   });
 
   // --- FRONTEND ROUTES ---
-  if (process.env.NODE_ENV !== 'production') {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    console.log(`[PROD] Searching frontend in: ${distPath}`);
-    if (fs.existsSync(distPath)) {
-      console.log(`[PROD] Found dist folder at: ${distPath}`);
-      app.use(express.static(distPath, { index: false }));
-      app.get('*', (req, res) => {
-        // Skip already handled paths
-        if (req.url.startsWith('/api') || req.url.startsWith('/uploads')) return; 
-        res.sendFile(path.resolve(distPath, 'index.html'));
+  if (!process.env.VERCEL) {
+    if (process.env.NODE_ENV !== 'production') {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
       });
+      app.use(vite.middlewares);
     } else {
-      app.get('*', (req, res) => {
-        if (req.url.startsWith('/api')) return;
-        res.status(404).send('Application non prête (dist manquant).');
-      });
+      console.log(`[PROD] Searching frontend in: ${distPath}`);
+      if (fs.existsSync(distPath)) {
+        console.log(`[PROD] Found dist folder at: ${distPath}`);
+        app.use(express.static(distPath, { index: false }));
+        app.get('*', (req, res) => {
+          if (req.url.startsWith('/api') || req.url.startsWith('/uploads')) return; 
+          res.sendFile(path.resolve(distPath, 'index.html'));
+        });
+      }
     }
   }
 

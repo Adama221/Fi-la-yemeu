@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { authRoutes } from './auth.js';
-import { productRoutes, userActionsRoutes } from './products.js';
-import { orderRoutes, newsletterRoutes } from './orders.js';
-import { adminRoutes } from './admin.js';
-import { affiliateRoutes } from './affiliate.js';
+import { authRoutes } from './auth';
+import { productRoutes, userActionsRoutes } from './products';
+import { orderRoutes, newsletterRoutes } from './orders';
+import { adminRoutes } from './admin';
+import { affiliateRoutes } from './affiliate';
 
 export function createApiRouter(db: any, uploadsDir: string) {
   const router = Router();
