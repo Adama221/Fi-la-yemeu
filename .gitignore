@@ -10,3 +10,4 @@ coverage/
 .NODE_ENV 
 Admin
 .env.local
+.NODE_ENV
