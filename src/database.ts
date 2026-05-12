@@ -1,66 +1,54 @@
-import { open } from 'sqlite';
+import { createClient } from '@libsql/client';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
-import sqlite3 from 'sqlite3';
 
 export async function initDb() {
   const isReadOnlyEnv = !!process.env.K_SERVICE || !!process.env.VERCEL;
-  console.log('[initDb] isReadOnlyEnv:', isReadOnlyEnv);
-  
   const dataDir = isReadOnlyEnv ? '/tmp/data' : path.join(process.cwd(), 'data');
-  console.log('[initDb] dataDir:', dataDir);
   
   if (!fs.existsSync(dataDir)) {
-    console.log('[initDb] Creating dataDir...');
     fs.mkdirSync(dataDir, { recursive: true });
   }
   const dbPath = path.join(dataDir, 'database.sqlite');
-  console.log('[initDb] dbPath:', dbPath);
   
   if (isReadOnlyEnv) {
     const originalDbPath = path.join(process.cwd(), 'data', 'database.sqlite');
-    console.log('[initDb] Checking originalDbPath:', originalDbPath);
     if (fs.existsSync(originalDbPath) && !fs.existsSync(dbPath)) {
       try {
-        console.log('[initDb] Copying initial database...');
         fs.copyFileSync(originalDbPath, dbPath);
-        console.log('Copied database to /tmp/data/database.sqlite for read-only environment');
       } catch (e) {
         console.error('Failed to copy initial database:', e);
       }
     }
   }
-  
-  console.log('[initDb] sqlite3 module loaded');
 
-  let db;
-  console.log('[initDb] Opening database...');
-  try {
-    db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database
-    });
-    console.log('[initDb] Database opened');
+  const client = createClient({
+    url: `file:${dbPath}`
+  });
 
-    // Quick test query to verify integrity
-    await db.get("PRAGMA schema_version");
-    console.log('[initDb] PRAGMA check passed');
-  } catch (err: any) {
-    if (err.message && err.message.includes('SQLITE_CORRUPT')) {
-      console.warn("Database is corrupt. Deleting and recreating...");
-      try {
-        fs.unlinkSync(dbPath);
-      } catch (e) {
-        // Ignorer si la suppression échoue (ex: fichier inexistant)
-      }
-      db = await open({
-        filename: dbPath,
-        driver: sqlite3.Database
-      });
-    } else {
-      throw err;
+  const db = {
+    get: async (sql: string, params: any[] = []) => {
+      const res = await client.execute({ sql, args: params });
+      return res.rows.length > 0 ? res.rows[0] : undefined;
+    },
+    all: async (sql: string, params: any[] = []) => {
+      const res = await client.execute({ sql, args: params });
+      return res.rows;
+    },
+    run: async (sql: string, params: any[] = []) => {
+      const res = await client.execute({ sql, args: params });
+      return { lastID: res.lastInsertRowid ? Number(res.lastInsertRowid) : undefined, changes: res.rowsAffected };
+    },
+    exec: async (sql: string) => {
+      await client.executeMultiple(sql);
     }
+  };
+
+  try {
+    await db.get("PRAGMA schema_version");
+  } catch (err: any) {
+    console.error("Database connection error:", err);
   }
 
   await db.exec(`
@@ -166,17 +154,14 @@ export async function initDb() {
     );
   `);
 
-  // Safe table migrations for existing installs
   try {
-    const productsInfo = await db.all("PRAGMA table_info(products)");
-    const productsCols = productsInfo.map(c => (c as any).name);
+    const productsCols = (await db.all("PRAGMA table_info(products)")).map(c => (c as any).name);
     if (!productsCols.includes('category')) await db.run('ALTER TABLE products ADD COLUMN category TEXT');
     if (!productsCols.includes('commission')) await db.run('ALTER TABLE products ADD COLUMN commission REAL');
     if (!productsCols.includes('stock')) await db.run('ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0');
     if (!productsCols.includes('low_stock_threshold')) await db.run('ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER DEFAULT 5');
 
-    const ordersInfo = await db.all("PRAGMA table_info(orders)");
-    const ordersCols = ordersInfo.map(c => (c as any).name);
+    const ordersCols = (await db.all("PRAGMA table_info(orders)")).map(c => (c as any).name);
     if (!ordersCols.includes('total')) await db.run('ALTER TABLE orders ADD COLUMN total REAL');
     if (!ordersCols.includes('method')) await db.run('ALTER TABLE orders ADD COLUMN method TEXT');
     if (!ordersCols.includes('customer_json')) await db.run('ALTER TABLE orders ADD COLUMN customer_json TEXT');
@@ -184,14 +169,12 @@ export async function initDb() {
     if (!ordersCols.includes('created_at')) await db.run('ALTER TABLE orders ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
     if (!ordersCols.includes('affiliate_code')) await db.run('ALTER TABLE orders ADD COLUMN affiliate_code TEXT');
 
-    const commissionsInfo = await db.all("PRAGMA table_info(commissions)");
-    const commissionsCols = commissionsInfo.map(c => (c as any).name);
+    const commissionsCols = (await db.all("PRAGMA table_info(commissions)")).map(c => (c as any).name);
     if (!commissionsCols.includes('created_at')) await db.run('ALTER TABLE commissions ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
   } catch (err) {
     console.warn("Migration warning:", err);
   }
 
-  // Insert Admin
   const adminPassword = process.env.ADMIN_PASSWORD || 'Pape221';
   const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
   
@@ -208,34 +191,17 @@ export async function initDb() {
         'INSERT INTO users (username, email, password, role, is_staff, is_superuser) VALUES (?, ?, ?, ?, ?, ?)',
         [admin.username, admin.email, hashedAdminPassword, 'admin', 1, 1]
       );
-    } else {
-      // Ensure role and username are correct even if already exists
-      // Force update password to ensure it matches current default
-      const needsPasswordUpdate = true;
-      
-      if (needsPasswordUpdate || user.role !== 'admin') {
-        await db.run(
-          'UPDATE users SET username = ?, role = "admin", is_staff = 1, is_superuser = 1, password = ? WHERE email = ?', 
-          [admin.username, hashedAdminPassword, admin.email]
-        );
-      }
     }
   }
 
-  // Insert Default Setting/Payment Config 
   const pConf = await db.get('SELECT id FROM payment_configs WHERE id = 1');
-  if (!pConf) {
-    await db.run('INSERT INTO payment_configs (id, wave_link, orange_link) VALUES (1, "", "")');
-  }
+  if (!pConf) await db.run('INSERT INTO payment_configs (id, wave_link, orange_link) VALUES (1, "", "")');
 
   const sConf = await db.get('SELECT id FROM site_settings WHERE id = 1');
-  if (!sConf) {
-    await db.run('INSERT INTO site_settings (id) VALUES (1)');
-  }
+  if (!sConf) await db.run('INSERT INTO site_settings (id) VALUES (1)');
 
-  // Insert Default Products
   const prodCountRes = await db.get('SELECT COUNT(*) as count FROM products');
-  if (prodCountRes && prodCountRes.count === 0) {
+  if (prodCountRes && Number(prodCountRes.count) === 0) {
     await db.run('INSERT INTO products (name, price, description, image, category, commission, stock) VALUES (?, ?, ?, ?, ?, ?, ?)',
       ['Robe Éclat', 120000, 'Une robe élégante de soirée en soie', 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80', 'Femme', 10, 15]
     );
@@ -246,7 +212,7 @@ export async function initDb() {
       ['Sac Signature Noir', 85000, 'Sac à main en cuir véritable avec finitions dorées', 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?auto=format&fit=crop&q=80', 'Accessoires', 10, 8]
     );
     await db.run('INSERT INTO products (name, price, description, image, category, commission, stock) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      ['Veste d\'Automne', 145000, 'Veste légère et résistante pour la saison', 'https://plus.unsplash.com/premium_photo-1673356301535-224a0efcbdfc?auto=format&fit=crop&q=80', 'Femme', 12, 10]
+      ["Veste d'Automne", 145000, 'Veste légère et résistante pour la saison', 'https://plus.unsplash.com/premium_photo-1673356301535-224a0efcbdfc?auto=format&fit=crop&q=80', 'Femme', 12, 10]
     );
   }
 
