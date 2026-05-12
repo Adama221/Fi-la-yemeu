@@ -38,7 +38,7 @@ export default function Header() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-4 group mx-auto md:mx-0 pr-6 md:pr-0">
           {settings.logo && settings.logo !== '/logo.png' ? (
-             <img src={settings.logo} alt="Sama Butik" className="h-10 w-auto object-contain transition-transform group-hover:scale-105" />
+             <img src={settings.logo} alt="Sama Butik" referrerPolicy="no-referrer" className="h-10 w-auto object-contain transition-transform group-hover:scale-105" />
           ) : (
              <span className="text-2xl md:text-3xl font-serif font-black text-primary tracking-tighter uppercase transition-colors group-hover:text-secondary">SAMA<span className="font-light italic ml-1">BUTIK</span></span>
           )}

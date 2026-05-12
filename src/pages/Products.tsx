@@ -47,8 +47,7 @@ export default function Products() {
   };
 
   useEffect(() => {
-    // Automatic fetching disabled at user request.
-    // fetchProducts();
+    fetchProducts();
   }, []);
 
 
@@ -178,6 +177,7 @@ export default function Products() {
                       <img 
                         src={product.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80'} 
                         alt={product.name}
+                        referrerPolicy="no-referrer"
                         className="w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-105"
                       />
                       {product.stock !== undefined && product.stock <= 0 && (

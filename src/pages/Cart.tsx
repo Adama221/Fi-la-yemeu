@@ -34,7 +34,7 @@ export default function Cart() {
             {items.map((item) => (
               <div key={`${item.id}-${item.size}`} className="flex gap-8 pb-10 border-b border-primary/20">
                 <div className="w-32 md:w-48 aspect-[3/4] bg-accent-soft overflow-hidden flex-shrink-0 relative group">
-                  <img src={item.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80&w=400'} alt={item.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
+                  <img src={item.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80&w=400'} alt={item.name} referrerPolicy="no-referrer" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
                 </div>
                 <div className="flex-grow flex flex-col justify-between py-2">
                   <div className="flex justify-between items-start gap-4">

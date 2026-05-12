@@ -138,8 +138,7 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    // Automatic fetching disabled at user request.
-    // fetchData();
+    fetchData();
   }, [isAdmin]);
 
   const handleDeleteProduct = (id: string | number) => {
@@ -617,7 +616,7 @@ export default function AdminDashboard() {
                     <tr key={item.id} className="border-b border-primary/5 hover:bg-accent-soft/10 transition-colors">
                       <td className="px-10 py-6 flex items-center gap-4">
                         <div className="w-12 h-12 bg-accent-soft rounded-xl overflow-hidden shadow-sm">
-                          <img src={item.image || `https://images.unsplash.com/photo-${1549439602 + i}?auto=format&fit=crop&q=80&w=100`} className="w-full h-full object-cover" alt="" />
+                          <img src={item.image || `https://images.unsplash.com/photo-${1549439602 + i}?auto=format&fit=crop&q=80&w=100`} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt="" />
                         </div>
                         <div>
                           <p className="font-bold text-primary font-serif italic text-base">{item.name}</p>

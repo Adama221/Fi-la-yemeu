@@ -50,8 +50,7 @@ export default function AffiliateDashboard() {
 
   useEffect(() => {
     if (user) {
-      // Automatic fetching disabled at user request.
-      // fetchDashboard();
+      fetchDashboard();
     }
   }, [user]);
 

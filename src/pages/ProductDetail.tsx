@@ -14,17 +14,32 @@ export default function ProductDetail() {
 
   useEffect(() => {
     const fetchProduct = async () => {
-      // Automatic fetching disabled at user request.
-      /*
       try {
         if (!id) return;
         setLoading(true);
         const response = await fetch(`/api/products/${id}`);
-        // ...
+        const contentType = response.headers.get('content-type');
+
+        if (!response.ok) {
+          if (contentType && contentType.includes('application/json')) {
+            const errData = await response.json();
+            throw new Error(errData.error || 'Not found');
+          } else {
+            throw new Error('Le serveur API est mal configuré (Reçu du HTML au lieu de JSON).');
+          }
+        }
+
+        if (!contentType || !contentType.includes('application/json')) {
+           throw new Error("Réponse API invalide : Reçu du HTML au lieu de JSON.");
+        }
+
+        const data = await response.json();
+        setProduct(data);
+      } catch (error) {
+        console.error("Error fetching product:", error);
       } finally {
         setLoading(false);
       }
-      */
     };
     fetchProduct();
   }, [id]);
@@ -74,6 +89,7 @@ export default function ProductDetail() {
               <img 
                 src={product.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80&w=1200'} 
                 alt={product.name} 
+                referrerPolicy="no-referrer"
                 className="w-full h-full object-cover" 
               />
             </motion.div>

@@ -42,8 +42,7 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Automatic fetching disabled at user request to avoid loading issues.
-    // fetchFeatured();
+    fetchFeatured();
   }, []);
 
   return (
@@ -122,6 +121,7 @@ export default function Home() {
                   <img 
                     src={product.image || `https://images.unsplash.com/photo-${i === 1 ? '1620755100705-d1297e685f0a' : i === 2 ? '1572804013307-f971ad9f7152' : '1523381210434-271e8be1f52b'}?auto=format&fit=crop&q=80&w=800`}
                     alt={product.name}
+                    referrerPolicy="no-referrer"
                     className="w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-105"
                   />
                   {product.stock !== undefined && product.stock <= 0 && (

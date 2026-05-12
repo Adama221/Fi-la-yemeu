@@ -70,7 +70,7 @@ export default function ImageUploader({ onImageSelect, className = "" }: ImageUp
 
       {preview ? (
         <div className="absolute inset-0">
-          <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+          <img src={preview} alt="Preview" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <p className="text-white text-[10px] font-bold uppercase tracking-widest">Changer l'image</p>
           </div>
