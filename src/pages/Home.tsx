@@ -7,10 +7,12 @@ import { useSettings } from '../contexts/SettingsContext';
 
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { settings } = useSettings();
 
   const fetchFeatured = async () => {
+    setLoading(true);
     setError(null);
     try {
       const response = await fetch('/api/products');
@@ -34,11 +36,14 @@ export default function Home() {
     } catch (error: any) {
       console.warn("Failed to fetch featured products", error);
       setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchFeatured();
+    // Automatic fetching disabled at user request to avoid loading issues.
+    // fetchFeatured();
   }, []);
 
   return (
@@ -90,17 +95,21 @@ export default function Home() {
                 <p className="text-red-800 font-serif italic text-2xl mb-4">Erreur de connexion</p>
                 <p className="text-sm text-red-600/80 mb-8">{error}</p>
                 <button 
-                  onClick={fetchFeatured}
-                  className="px-8 py-3 bg-red-900/5 text-red-900 border border-red-200 text-xs uppercase font-semibold tracking-widest hover:bg-red-900 hover:text-white transition-all"
+                   onClick={fetchFeatured}
+                   className="px-8 py-3 bg-red-900/5 text-red-900 border border-red-200 text-xs uppercase font-semibold tracking-widest hover:bg-red-900 hover:text-white transition-all"
                 >
                   Réessayer
                 </button>
               </div>
-            ) : featuredProducts.length === 0 ? (
+            ) : loading ? (
               <div className="col-span-full text-center py-32 flex flex-col justify-center items-center">
                 <div className="w-8 h-8 border-2 border-primary/10 border-t-secondary rounded-[1px] animate-spin mb-6"></div>
                 <p className="text-xs uppercase tracking-widest font-medium text-primary/40">Préparation de la présentation...</p>
               </div>
+            ) : featuredProducts.length === 0 ? (
+               <div className="col-span-full text-center py-20">
+                  <p className="text-xs uppercase tracking-widest font-medium text-primary/40 italic">La vitrine est en cours de mise à jour...</p>
+               </div>
             ) : featuredProducts.map((product, i) => (
               <motion.div 
                 key={product.id}

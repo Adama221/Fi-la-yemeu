@@ -8,7 +8,7 @@ import { useCart } from '../contexts/CartContext';
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState('');
   const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState('Tous');
   const { addToCart } = useCart();
@@ -47,7 +47,8 @@ export default function Products() {
   };
 
   useEffect(() => {
-    fetchProducts();
+    // Automatic fetching disabled at user request.
+    // fetchProducts();
   }, []);
 
 

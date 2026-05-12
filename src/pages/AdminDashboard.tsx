@@ -138,7 +138,8 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchData();
+    // Automatic fetching disabled at user request.
+    // fetchData();
   }, [isAdmin]);
 
   const handleDeleteProduct = (id: string | number) => {
