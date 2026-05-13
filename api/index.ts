@@ -1,8 +1,9 @@
+import { Request, Response } from 'express';
 import startServer from '../server';
 
 let app: any;
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: Request, res: Response) {
   console.log(`[Vercel Handler] ${req.method} ${req.url}`);
   try {
     if (!app) {
@@ -17,8 +18,8 @@ export default async function handler(req: any, res: any) {
     if (!res.headersSent) {
       res.status(500).json({
         error: 'Backend Initialization Failed',
-        message: error.message,
-        code: error.code,
+        message: error.message || 'Unknown error',
+        code: error.code || 'UNKNOWN',
         stack: error.stack
       });
     }

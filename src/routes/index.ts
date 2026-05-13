@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { authRoutes } from './auth';
 import { productRoutes, userActionsRoutes } from './products';
 import { orderRoutes, newsletterRoutes } from './orders';
@@ -9,7 +9,7 @@ export function createApiRouter(db: any, uploadsDir: string) {
   const router = Router();
 
   // --- HEALTH & DIAG ---
-  router.get('/health', (req, res) => {
+  router.get('/health', (req: Request, res: Response) => {
     res.json({ 
       status: 'ok', 
       server: 'SamaButik Node.js (Express)',
@@ -19,7 +19,7 @@ export function createApiRouter(db: any, uploadsDir: string) {
     });
   });
 
-  router.get('/debug-env', (req, res) => {
+  router.get('/debug-env', (req: Request, res: Response) => {
     res.json({
       cwd: process.cwd(),
       nodeVersion: process.version,
@@ -38,12 +38,12 @@ export function createApiRouter(db: any, uploadsDir: string) {
   router.use('/affiliate', affiliateRoutes(db));
 
   // --- MISC ---
-  router.get('/settings', async (req, res) => {
+  router.get('/settings', async (req: Request, res: Response) => {
     const settings = await db.get('SELECT * FROM site_settings WHERE id = 1');
     res.json({ settings });
   });
 
-  router.get('/categories', async (req, res) => {
+  router.get('/categories', async (req: Request, res: Response) => {
     const cats = await db.all('SELECT DISTINCT category FROM products WHERE category IS NOT NULL');
     res.json({ categories: cats.map((c: any) => c.category) });
   });
