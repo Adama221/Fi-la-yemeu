@@ -39,13 +39,26 @@ export function createApiRouter(db: any, uploadsDir: string) {
 
   // --- MISC ---
   router.get('/settings', async (req: Request, res: Response) => {
-    const settings = await db.get('SELECT * FROM site_settings WHERE id = 1');
-    res.json({ settings });
+    try {
+      const snap = await db.collection('settings').doc('config').get();
+      res.json({ settings: snap.exists ? snap.data() : {} });
+    } catch (e) {
+      res.status(500).json({ error: 'Database error' });
+    }
   });
 
   router.get('/categories', async (req: Request, res: Response) => {
-    const cats = await db.all('SELECT DISTINCT category FROM products WHERE category IS NOT NULL');
-    res.json({ categories: cats.map((c: any) => c.category) });
+    try {
+      const snap = await db.collection('products').get();
+      const catSet = new Set();
+      snap.forEach(doc => {
+        const data = doc.data();
+        if (data.category) catSet.add(data.category);
+      });
+      res.json({ categories: Array.from(catSet) });
+    } catch (e) {
+      res.status(500).json({ error: 'Database error', categories: [] });
+    }
   });
 
   return router;

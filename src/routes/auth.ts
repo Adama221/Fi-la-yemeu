@@ -4,23 +4,31 @@ import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-pour-samabutik';
 
-export function authRoutes(db: any) {
+export function authRoutes(db: FirebaseFirestore.Firestore) {
   const router = Router();
 
   router.post('/auth/google', async (req, res) => {
     const { email } = req.body;
     const targetEmail = email || 'pape@samabutik.com';
-    let user = await db.get('SELECT * FROM users WHERE email = ?', [targetEmail]);
+    const usersRef = db.collection('users');
+    const snap = await usersRef.where('email', '==', targetEmail).limit(1).get();
     
-    if (!user) {
+    let user;
+    if (snap.empty) {
        const adminEmails = ['papesamabutik@gmail.com', '78177233ds@gmail.com', 'pape@samabutik.com'];
        const role = adminEmails.includes(targetEmail.toLowerCase()) ? 'admin' : 'client';
        const hashedPassword = await bcrypt.hash('google-mock-pass', 10);
-       await db.run(
-         'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-         [targetEmail.split('@')[0], targetEmail, hashedPassword, role]
-       );
-       user = await db.get('SELECT * FROM users WHERE email = ?', [targetEmail]);
+       const docRef = await usersRef.add({
+         username: targetEmail.split('@')[0],
+         email: targetEmail,
+         password: hashedPassword,
+         role: role
+       });
+       const newSnap = await docRef.get();
+       user = { id: newSnap.id, ...newSnap.data() };
+    } else {
+       const doc = snap.docs[0];
+       user = { id: doc.id, ...doc.data() };
     }
 
     const payload = { id: user.id, email: user.email, role: user.role };
@@ -36,14 +44,23 @@ export function authRoutes(db: any) {
       return res.status(400).json({ error: "L'e-mail et le mot de passe sont requis." });
     }
 
-    const user = await db.get(
-      'SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)',
-      [cleanIdentity, cleanIdentity]
-    );
+    const usersRef = db.collection('users');
+    const lowerIdentity = cleanIdentity.toLowerCase();
+    
+    // Firestore does not natively support case-insensitive querying or OR queries across different fields easily like SQL
+    // We will do two independent lookups, or if we ensure emails are lowercase, it's easier.
+    // Assuming usernames/emails are case-sensitive here or matching exactly.
+    let snap = await usersRef.where('email', '==', lowerIdentity).limit(1).get();
+    if (snap.empty) {
+       snap = await usersRef.where('username', '==', cleanIdentity).limit(1).get();
+    }
 
-    if (!user) {
+    if (snap.empty) {
       return res.status(401).json({ error: "Utilisateur introuvable ou identifiants incorrects." });
     }
+
+    const doc = snap.docs[0];
+    const user: any = { id: doc.id, ...doc.data() };
 
     const isPasswordValid = await bcrypt.compare(password, user.password).catch(() => false);
     const isOldPlaintextMatch = user.password === password;
@@ -54,7 +71,7 @@ export function authRoutes(db: any) {
 
     if (isOldPlaintextMatch && !isPasswordValid) {
         const newHash = await bcrypt.hash(password, 10);
-        await db.run('UPDATE users SET password = ? WHERE id = ?', [newHash, user.id]);
+        await doc.ref.update({ password: newHash });
     }
 
     const payload = { id: user.id, email: user.email, role: user.role };
@@ -68,17 +85,27 @@ export function authRoutes(db: any) {
     const adminEmails = ['papesamabutik@gmail.com', '78177233ds@gmail.com', 'pape@samabutik.com'];
     const assignedRole = adminEmails.includes(email?.toLowerCase()) ? 'admin' : (role || 'client');
     try {
+      const usersRef = db.collection('users');
+      const lowerEmail = email.toLowerCase();
+      const existing = await usersRef.where('email', '==', lowerEmail).limit(1).get();
+      if (!existing.empty) {
+        return res.status(400).json({ error: "Cet e-mail est déjà pris." });
+      }
+
       const hashedPassword = await bcrypt.hash(password, 10);
-      const result = await db.run(
-        'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-        [username || email.split('@')[0], email, hashedPassword, assignedRole]
-      );
-      const user = await db.get('SELECT * FROM users WHERE id = ?', [result.lastID]);
+      const docRef = await usersRef.add({
+        username: username || email.split('@')[0], 
+        email: lowerEmail, 
+        password: hashedPassword, 
+        role: assignedRole
+      });
+      const newSnap = await docRef.get();
+      const user = { id: newSnap.id, ...newSnap.data() };
+      
       const payload = { id: user.id, email: user.email, role: user.role };
       const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
       res.json({ token, user });
     } catch (e: any) {
-      if (e.message && e.message.includes('UNIQUE')) return res.status(400).json({ error: "Cet e-mail est déjà pris." });
       res.status(400).json({ error: e.message });
     }
   });
@@ -89,7 +116,11 @@ export function authRoutes(db: any) {
     try {
       const token = authHeader.split(' ')[1];
       const decoded = jwt.verify(token, JWT_SECRET) as any;
-      const user = await db.get('SELECT id, username, email, role, phone, address FROM users WHERE id = ?', [decoded.id]);
+      const snap = await db.collection('users').doc(decoded.id).get();
+      if (!snap.exists) throw new Error('Not found');
+      
+      const { password, ...safeUser } = snap.data() as any;
+      const user = { id: snap.id, ...safeUser };
       res.json({ user });
     } catch { res.status(401).json({ error: "Session expirée." }); }
   });
