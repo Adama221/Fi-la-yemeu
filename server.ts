@@ -14,6 +14,7 @@ export default async function startServer() {
   
   // Create uploads directory if it doesn't exist
   const uploadsDir = join(process.cwd(), 'uploads');
+
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
@@ -30,6 +31,11 @@ export default async function startServer() {
   // Initialize DB and API router
   const db = await initDb();
   app.use('/api', createApiRouter(db, uploadsDir));
+
+  // Catch-all for API to prevent returning HTML for unknown API routes
+  app.use('/api/*', (req, res) => {
+    res.status(404).json({ error: 'API route not found' });
+  });
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -55,7 +61,7 @@ export default async function startServer() {
   return app;
 }
 
-if (!process.env.VERCEL && process.argv[1] && (process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.cjs'))) {
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
   startServer().catch(err => {
     console.error('Failed to start server:', err);
     process.exit(1);

@@ -33,6 +33,12 @@ export function orderRoutes(db: any) {
     }
   });
 
+  router.post('/pay/orange', async (req, res) => {
+    // Simulated Orange Money API
+    const { amount, orderId } = req.body;
+    res.json({ success: true, payment_url: null, transaction_id: `OM-${Date.now()}` });
+  });
+
   return router;
 }
 

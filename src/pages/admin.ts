@@ -69,10 +69,15 @@ export function adminRoutes(db: any, uploadsDir: string) {
   router.post('/design', adminRequired, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), async (req, res) => {
     const files = req.files as any;
     let updates = []; let vals = [];
-    if (files.logo) { updates.push('logo = ?'); vals.push('/uploads/'+files.logo[0].filename); }
-    if (files.cover) { updates.push('cover = ?'); vals.push('/uploads/'+files.cover[0].filename); }
+    if (files && files.logo) { updates.push('logo = ?'); vals.push('/uploads/'+files.logo[0].filename); }
+    else if (req.body.logo_url) { updates.push('logo = ?'); vals.push(req.body.logo_url); }
+    
+    if (files && files.cover) { updates.push('cover = ?'); vals.push('/uploads/'+files.cover[0].filename); }
+    
     if (req.body.primary_color) { updates.push('primary_color = ?'); vals.push(req.body.primary_color); }
+    if (req.body.secondary_color) { updates.push('secondary_color = ?'); vals.push(req.body.secondary_color); }
     if (req.body.text) { updates.push('homepage_text = ?'); vals.push(req.body.text); }
+    
     if (updates.length > 0) { vals.push(1); await db.run(`UPDATE site_settings SET ${updates.join(', ')} WHERE id = 1`, vals); }
     res.json({ success: true });
   });

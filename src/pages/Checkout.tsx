@@ -84,7 +84,7 @@ export default function Checkout() {
         try {
             const orderId = await createOrder('orange');
             // Proxy to backend (mocking orange redirect logic)
-            const res = await fetch('/api/pay/orange', {
+            const res = await fetch('/api/orders/pay/orange', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ amount: total, orderId })

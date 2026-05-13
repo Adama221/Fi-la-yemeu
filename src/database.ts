@@ -4,24 +4,12 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 
 export async function initDb() {
-  const isReadOnlyEnv = !!process.env.K_SERVICE || !!process.env.VERCEL;
-  const dataDir = isReadOnlyEnv ? '/tmp/data' : path.join(process.cwd(), 'data');
+  const dataDir = path.join(process.cwd(), 'data');
   
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
   const dbPath = path.join(dataDir, 'database.sqlite');
-  
-  if (isReadOnlyEnv) {
-    const originalDbPath = path.join(process.cwd(), 'data', 'database.sqlite');
-    if (fs.existsSync(originalDbPath) && !fs.existsSync(dbPath)) {
-      try {
-        fs.copyFileSync(originalDbPath, dbPath);
-      } catch (e) {
-        console.error('Failed to copy initial database:', e);
-      }
-    }
-  }
 
   const client = createClient({
     url: `file:${dbPath}`
@@ -195,7 +183,7 @@ export async function initDb() {
   }
 
   const pConf = await db.get('SELECT id FROM payment_configs WHERE id = 1');
-  if (!pConf) await db.run('INSERT INTO payment_configs (id, wave_link, orange_link) VALUES (1, "", "")');
+  if (!pConf) await db.run("INSERT INTO payment_configs (id, wave_link, orange_link) VALUES (1, '', '')");
 
   const sConf = await db.get('SELECT id FROM site_settings WHERE id = 1');
   if (!sConf) await db.run('INSERT INTO site_settings (id) VALUES (1)');
