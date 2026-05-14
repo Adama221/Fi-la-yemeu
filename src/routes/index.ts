@@ -4,9 +4,24 @@ import { productRoutes, userActionsRoutes } from './products';
 import { orderRoutes, newsletterRoutes } from './orders';
 import { adminRoutes } from '../pages/admin';
 import { affiliateRoutes } from './affiliate';
+import { generateResponse } from '../services/gemini';
 
 export function createApiRouter(db: any, uploadsDir: string) {
   const router = Router();
+
+  // --- GEMINI AI ---
+  router.post('/gemini/chat', async (req: Request, res: Response) => {
+    try {
+      const { message, image } = req.body;
+      if (!message) return res.status(400).json({ error: 'Message requis' });
+      
+      const response = await generateResponse(message, image);
+      res.json({ response });
+    } catch (error: any) {
+      console.error('Gemini Error:', error);
+      res.status(500).json({ error: 'Erreur AI', message: error.message });
+    }
+  });
 
   // --- HEALTH & DIAG ---
   router.get('/health', (req: Request, res: Response) => {

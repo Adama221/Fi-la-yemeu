@@ -30,7 +30,12 @@ export default async function startServer() {
 
   // Initialize DB and API router
   const db = await initDb();
-  app.use('/api', createApiRouter(db, uploadsDir));
+  const apiRouter = createApiRouter(db, uploadsDir);
+  
+  // Vercel handles the /api prefix via rewrites, but Express also needs to know about it
+  // or we can mount it at / and /api to be safe
+  app.use('/api', apiRouter);
+  app.use(apiRouter); // Fallback for when Vercel drops the prefix
 
   // Catch-all for API to prevent returning HTML for unknown API routes
   app.use('/api/*', (req, res) => {

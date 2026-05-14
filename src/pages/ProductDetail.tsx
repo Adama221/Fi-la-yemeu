@@ -71,20 +71,20 @@ export default function ProductDetail() {
   };
 
   return (
-    <div className="pt-32 pb-24 bg-background-warm min-h-screen">
-      <div className="container mx-auto px-6 lg:px-12">
-        <Link to="/products" className="inline-flex items-center gap-3 text-[10px] uppercase font-semibold tracking-[0.2em] mb-16 hover:text-secondary transition-colors text-primary/60">
+    <div className="pt-20 pb-12 sm:pt-32 sm:pb-24 bg-background-warm min-h-screen">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-12">
+        <Link to="/products" className="inline-flex items-center gap-3 text-[10px] uppercase font-semibold tracking-[0.2em] mb-8 sm:mb-16 hover:text-secondary transition-colors text-primary/60">
           <ChevronLeft className="w-4 h-4" /> Retour à la collection
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-24">
           {/* Image Gallery */}
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 sm:gap-6">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8 }}
-              className="aspect-[3/4] bg-accent-soft relative overflow-hidden"
+              className="aspect-[3/4] sm:aspect-auto sm:h-[600px] lg:h-[700px] bg-accent-soft relative overflow-hidden rounded-sm"
             >
               <img 
                 src={product.image || 'https://images.unsplash.com/photo-1549439602-43ebcb23281f?auto=format&fit=crop&q=80&w=1200'} 
@@ -97,16 +97,16 @@ export default function ProductDetail() {
           </div>
 
           {/* Content */}
-          <div className="flex flex-col pt-8 lg:pt-16">
-            <span className="text-[10px] uppercase tracking-[0.3em] font-medium text-primary/60 mb-6 font-sans">{product.category || 'Collection Exclusive'}</span>
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-serif text-primary leading-tight tracking-tight mb-4 md:mb-6">{product.name}</h1>
-            <p className="text-xl sm:text-2xl font-sans font-light text-text-deep uppercase tracking-wider mb-8 md:mb-12">{formatPrice(product.price)}</p>
+          <div className="flex flex-col pt-0 lg:pt-16">
+            <span className="text-[10px] uppercase tracking-[0.3em] font-medium text-primary/60 mb-4 sm:mb-6 font-sans">{product.category || 'Collection Exclusive'}</span>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif text-primary leading-tight tracking-tight mb-4">{product.name}</h1>
+            <p className="text-xl sm:text-2xl font-sans font-light text-text-deep uppercase tracking-wider mb-6 sm:mb-12">{formatPrice(product.price)}</p>
             
-            <div className="mb-16">
+            <div className="mb-8 sm:mb-16">
                <p className="text-text-deep/80 leading-relaxed text-sm md:text-base font-light font-sans">{product.description}</p>
             </div>
 
-            <div className="flex flex-col gap-6 mb-20 mt-auto">
+            <div className="flex flex-col gap-4 mb-12 sm:mb-20 mt-auto">
               {product.stock !== undefined && product.stock <= 0 ? (
                 <div className="w-full bg-primary/5 text-primary/40 py-5 text-[10px] uppercase tracking-[0.2em] font-semibold flex items-center justify-center gap-3 cursor-not-allowed">
                   <ShoppingBag className="w-4 h-4 opacity-50" /> Rupture de stock
@@ -121,7 +121,7 @@ export default function ProductDetail() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-10 border-t border-primary/20">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 py-10 border-t border-primary/20">
                <div className="flex gap-4 items-start">
                  <ShieldCheck className="w-5 h-5 text-secondary flex-shrink-0" />
                  <div>

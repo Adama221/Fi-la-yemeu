@@ -1,0 +1,7 @@
+{
+  "name": "Samabutik",
+  "description": "E-commerce de haute couture avec assistant IA personnalisé",
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
