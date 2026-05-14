@@ -100,7 +100,7 @@ export function authRoutes(db: FirebaseFirestore.Firestore) {
         role: assignedRole
       });
       const newSnap = await docRef.get();
-      const user = { id: newSnap.id, ...newSnap.data() };
+      const user: any = { id: newSnap.id, ...newSnap.data() };
       
       const payload = { id: user.id, email: user.email, role: user.role };
       const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
