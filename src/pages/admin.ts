@@ -2,17 +2,32 @@ import { Router } from 'express';
 import { adminRequired } from '../routes/middleware';
 import admin from 'firebase-admin';
 
-export function adminRoutes(db: FirebaseFirestore.Firestore, uploadsDir: string) {
+export function adminRoutes(dbProxy: any, uploadsDir: string) {
   const router = Router();
+  const db = dbProxy.firebase;
+  const pg = dbProxy.pg;
 
   router.get('/dashboard', adminRequired, async (req, res) => {
     try {
+      if (dbProxy.isPostgres) {
+        const { rows: pCount } = await pg.query('SELECT COUNT(*) FROM products');
+        const { rows: oCount } = await pg.query('SELECT COUNT(*), SUM(total) as revenue FROM orders');
+        
+        return res.json({ 
+          products: parseInt(pCount[0].count), 
+          orders: parseInt(oCount[0].count), 
+          revenue: parseFloat(oCount[0].revenue || 0), 
+          commissions: 0 // Placeholder
+        });
+      }
+
+      if (!db) return res.json({ products: 0, orders: 0, revenue: 0, commissions: 0 });
       const prodSnap = await db.collection('products').count().get();
       const ordersSnap = await db.collection('orders').get(); // sum total
       const commSnap = await db.collection('commissions').count().get();
       
       let sum = 0;
-      ordersSnap.forEach(doc => sum += (doc.data().total || 0));
+      ordersSnap.forEach((doc: any) => sum += (doc.data().total || 0));
 
       res.json({ products: prodSnap.data().count, orders: ordersSnap.size, revenue: sum, commissions: commSnap.data().count });
     } catch {
@@ -22,6 +37,18 @@ export function adminRoutes(db: FirebaseFirestore.Firestore, uploadsDir: string)
 
   router.get('/analytics', adminRequired, async (req, res) => {
     try {
+      if (dbProxy.isPostgres) {
+        const { rows: salesTrend } = await pg.query(`
+          SELECT DATE_TRUNC('day', created_at)::date as day, SUM(total) as revenue 
+          FROM orders 
+          WHERE created_at >= NOW() - INTERVAL '30 days' 
+          GROUP BY day ORDER BY day ASC
+        `);
+        // Simple mock for popular products in postgres for now
+        return res.json({ salesTrend, popularProducts: [] });
+      }
+
+      if (!db) return res.json({ salesTrend: [], popularProducts: [] });
       const thirtyDaysAgo = admin.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
       const ordersSnap = await db.collection('orders')
         .where('created_at', '>=', thirtyDaysAgo)
@@ -31,7 +58,7 @@ export function adminRoutes(db: FirebaseFirestore.Firestore, uploadsDir: string)
       const salesMap: any = {};
       const prodCountMap: any = {};
 
-      ordersSnap.forEach(doc => {
+      ordersSnap.forEach((doc: any) => {
         const data = doc.data();
         const dateStr = data.created_at?.toDate().toISOString().split('T')[0] || '';
         salesMap[dateStr] = (salesMap[dateStr] || 0) + (data.total || 0);
@@ -45,7 +72,6 @@ export function adminRoutes(db: FirebaseFirestore.Firestore, uploadsDir: string)
 
       const salesTrend = Object.keys(salesMap).map(day => ({ day, revenue: salesMap[day] }));
       
-      // for popular products, we need names
       const popularArr = [];
       const keys = Object.keys(prodCountMap).sort((a,b) => prodCountMap[b] - prodCountMap[a]).slice(0, 5);
       for (const pid of keys) {
@@ -62,23 +88,39 @@ export function adminRoutes(db: FirebaseFirestore.Firestore, uploadsDir: string)
   });
 
   router.get('/orders', adminRequired, async (req, res) => {
-    const snap = await db.collection('orders').orderBy('created_at', 'desc').get();
-    const orders = snap.docs.map(doc => {
-        const data = doc.data();
-        return { 
-          id: doc.id, 
-          ...data,
-          items: typeof data.items_json === 'string' ? JSON.parse(data.items_json || '[]') : (data.items_json || []),
-          customer: typeof data.customer_json === 'string' ? JSON.parse(data.customer_json || '{}') : (data.customer_json || {})
-        };
-    });
-    res.json({ orders });
+    try {
+      if (dbProxy.isPostgres) {
+        const { rows: orders } = await pg.query('SELECT * FROM orders ORDER BY created_at DESC');
+        return res.json({ orders });
+      }
+
+      if (!db) return res.json({ orders: [] });
+      const snap = await db.collection('orders').orderBy('created_at', 'desc').get();
+      const orders = snap.docs.map((doc: any) => {
+          const data = doc.data();
+          return { 
+            id: doc.id, 
+            ...data,
+            items: typeof data.items_json === 'string' ? JSON.parse(data.items_json || '[]') : (data.items_json || []),
+            customer: typeof data.customer_json === 'string' ? JSON.parse(data.customer_json || '{}') : (data.customer_json || {})
+          };
+      });
+      res.json({ orders });
+    } catch { res.json({ orders: [] }); }
   });
 
   router.get('/products', adminRequired, async (req, res) => {
-    const snap = await db.collection('products').get();
-    const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.json({ products });
+    try {
+      if (dbProxy.isPostgres) {
+        const { rows: products } = await pg.query('SELECT * FROM products ORDER BY name ASC');
+        return res.json({ products });
+      }
+
+      if (!db) return res.json({ products: [] });
+      const snap = await db.collection('products').get();
+      const products = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      res.json({ products });
+    } catch { res.json({ products: [] }); }
   });
 
   router.get('/affiliates', adminRequired, async (req, res) => {

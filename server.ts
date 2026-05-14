@@ -5,6 +5,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import fs from 'fs';
 import { initDb } from './src/database';
+import { initPostgres, db as pgDb } from './src/lib/db.ts';
 import { createApiRouter } from './src/routes/index';
 
 const PORT = process.env.PORT || 3000;
@@ -29,8 +30,18 @@ export default async function startServer() {
   // Serve static files
   app.use('/uploads', express.static(uploadsDir));
 
-  // Initialize DB and API router
-  const db = await initDb();
+  // Initialize DBs
+  const firebaseDb = await initDb();
+  await initPostgres();
+
+  // Unified DB object for injection
+  const db = {
+    firebase: firebaseDb,
+    pg: pgDb,
+    // Provide a helper to know which one is preferred
+    isPostgres: !!process.env.DATABASE_URL
+  };
+
   const apiRouter = createApiRouter(db, uploadsDir);
   
   // API routes mount

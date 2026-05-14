@@ -39,7 +39,7 @@ export function createApiRouter(db: any, uploadsDir: string) {
       const { message, image, history } = req.body;
       if (!message && !image) return res.status(400).json({ error: 'Message ou image requis' });
       
-      const response = await generateResponse(message, image, history, db);
+      const response = await generateResponse(message, image, history, db.firebase);
       res.json({ response });
     } catch (error: any) {
       console.error('Gemini Error:', error);
@@ -54,7 +54,8 @@ export function createApiRouter(db: any, uploadsDir: string) {
       server: 'SamaButik Node.js (Express)',
       env: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString(),
-      database: db ? 'connected' : 'disconnected'
+      database: db.firebase ? 'connected' : 'disconnected',
+      postgres: db.isPostgres ? 'connected' : 'not configured'
     });
   });
 
@@ -79,7 +80,12 @@ export function createApiRouter(db: any, uploadsDir: string) {
   // --- MISC ---
   router.get('/settings', async (req: Request, res: Response) => {
     try {
-      const snap = await db.collection('settings').doc('config').get();
+      if (db.isPostgres) {
+        const { rows } = await db.pg.query("SELECT value FROM settings WHERE key = 'config'");
+        return res.json({ settings: rows[0]?.value || {} });
+      }
+      if (!db.firebase) return res.json({ settings: {} });
+      const snap = await db.firebase.collection('settings').doc('config').get();
       res.json({ settings: snap.exists ? snap.data() : {} });
     } catch (e) {
       res.status(500).json({ error: 'Database error' });
@@ -96,7 +102,15 @@ export function createApiRouter(db: any, uploadsDir: string) {
       if (secondary_color !== undefined) updates.secondary_color = secondary_color;
       if (homepage_text !== undefined) updates.homepage_text = homepage_text;
 
-      await db.collection('settings').doc('config').set(updates, { merge: true });
+      if (db.isPostgres) {
+        await db.pg.query(
+          "INSERT INTO settings (key, value) VALUES ('config', $1) ON CONFLICT (key) DO UPDATE SET value = settings.value || $1",
+          [JSON.stringify(updates)]
+        );
+        return res.json({ success: true });
+      }
+      if (!db.firebase) return res.status(500).json({ error: 'Firebase not available' });
+      await db.firebase.collection('settings').doc('config').set(updates, { merge: true });
       res.json({ success: true });
     } catch (e) {
       res.status(500).json({ error: 'Database error' });
@@ -105,9 +119,14 @@ export function createApiRouter(db: any, uploadsDir: string) {
 
   router.get('/categories', async (req: Request, res: Response) => {
     try {
-      const snap = await db.collection('products').get();
+      if (db.isPostgres) {
+        const { rows } = await db.pg.query("SELECT DISTINCT category FROM products WHERE category IS NOT NULL");
+        return res.json({ categories: rows.map((r: any) => r.category) });
+      }
+      if (!db.firebase) return res.json({ categories: [] });
+      const snap = await db.firebase.collection('products').get();
       const catSet = new Set();
-      snap.forEach(doc => {
+      snap.forEach((doc: any) => {
         const data = doc.data();
         if (data.category) catSet.add(data.category);
       });
