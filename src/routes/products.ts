@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authRequired } from './middleware';
+import { authRequired, adminRequired } from './middleware';
 import admin from 'firebase-admin';
 
 export function productRoutes(db: FirebaseFirestore.Firestore) {
@@ -14,6 +14,58 @@ export function productRoutes(db: FirebaseFirestore.Firestore) {
       res.status(500).json({ error: 'Database error' });
     }
   });
+
+  // --- ADMIN ACTIONS ---
+  router.post('/', adminRequired, async (req, res) => {
+    const { name, price, description, category, commission, stock, low_stock_threshold, image_url } = req.body;
+    try {
+      const ref = await db.collection('products').add({ 
+        name, 
+        price: Number(price), 
+        description, 
+        image: image_url || null, 
+        category, 
+        commission: commission ? Number(commission) : null, 
+        stock: Number(stock) || 0, 
+        low_stock_threshold: Number(low_stock_threshold) || 5,
+        created_at: admin.firestore.FieldValue.serverTimestamp()
+      });
+      res.json({ success: true, id: ref.id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  router.put('/:id', adminRequired, async (req, res) => {
+    const { name, price, description, category, commission, stock, low_stock_threshold, image_url } = req.body;
+    try {
+      const ref = db.collection('products').doc(req.params.id);
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (price !== undefined) updates.price = price !== null ? Number(price) : null;
+      if (description !== undefined) updates.description = description;
+      if (category !== undefined) updates.category = category;
+      if (commission !== undefined) updates.commission = commission !== null ? Number(commission) : null;
+      if (stock !== undefined) updates.stock = stock !== null ? Number(stock) : 0;
+      if (low_stock_threshold !== undefined) updates.low_stock_threshold = low_stock_threshold !== null ? Number(low_stock_threshold) : 5;
+      if (image_url !== undefined) updates.image = image_url;
+      
+      await ref.update(updates);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  router.delete('/:id', adminRequired, async (req, res) => {
+    try {
+      await db.collection('products').doc(req.params.id).delete();
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+  // --- END ADMIN ACTIONS ---
 
   router.get('/search', async (req, res) => {
     const { q } = req.query;

@@ -149,7 +149,7 @@ export default function AdminDashboard() {
     if (!productToDelete) return;
 
     try {
-      const res = await fetch(`/api/admin/products/${productToDelete}`, {
+      const res = await fetch(`/api/products/${productToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
       });
@@ -279,8 +279,8 @@ export default function AdminDashboard() {
         image_url: currentImageUrl
       };
 
-      const url = editingProduct ? `/api/admin/products/${editingProduct.id}/update` : '/api/admin/products';
-      const method = 'POST';
+      const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
+      const method = editingProduct ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,

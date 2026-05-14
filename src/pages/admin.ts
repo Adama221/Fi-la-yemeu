@@ -81,52 +81,6 @@ export function adminRoutes(db: FirebaseFirestore.Firestore, uploadsDir: string)
     res.json({ products });
   });
 
-  // Replaced multer with JSON body for base64 / URLs
-  router.post('/products', adminRequired, async (req, res) => {
-    const { name, price, description, category, commission, stock, low_stock_threshold, image_url } = req.body;
-    await db.collection('products').add({ name, price, description, image: image_url || null, category, commission, stock, low_stock_threshold });
-    res.json({ success: true });
-  });
-
-  router.put('/products/:id', adminRequired, async (req, res) => {
-    const { name, price, description, category, commission, stock, low_stock_threshold, image_url } = req.body;
-    const ref = db.collection('products').doc(req.params.id);
-    const updates: any = {};
-    if (name !== undefined) updates.name = name;
-    if (price !== undefined) updates.price = price;
-    if (description !== undefined) updates.description = description;
-    if (category !== undefined) updates.category = category;
-    if (commission !== undefined) updates.commission = commission;
-    if (stock !== undefined) updates.stock = stock;
-    if (low_stock_threshold !== undefined) updates.low_stock_threshold = low_stock_threshold;
-    if (image_url !== undefined) updates.image = image_url;
-    
-    await ref.update(updates);
-    res.json({ success: true });
-  });
-
-  router.post('/products/:id/update', adminRequired, async (req, res) => {
-    const { name, price, description, category, commission, stock, low_stock_threshold, image_url } = req.body;
-    const ref = db.collection('products').doc(req.params.id);
-    const updates: any = {};
-    if (name !== undefined) updates.name = name;
-    if (price !== undefined) updates.price = price;
-    if (description !== undefined) updates.description = description;
-    if (category !== undefined) updates.category = category;
-    if (commission !== undefined) updates.commission = commission;
-    if (stock !== undefined) updates.stock = stock;
-    if (low_stock_threshold !== undefined) updates.low_stock_threshold = low_stock_threshold;
-    if (image_url !== undefined) updates.image = image_url;
-    
-    await ref.update(updates);
-    res.json({ success: true });
-  });
-
-  router.delete('/products/:id', adminRequired, async (req, res) => {
-    await db.collection('products').doc(req.params.id).delete();
-    res.json({ success: true });
-  });
-
   router.get('/affiliates', adminRequired, async (req, res) => {
     const snap = await db.collection('affiliates').get();
     const affiliates = await Promise.all(snap.docs.map(async doc => {
