@@ -26,7 +26,7 @@ export async function initDb() {
   const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
   
   const admins = [
-    { email: 'papesamabutik@gmail.com', username: 'Pape' },
+    { email: process.env.ADMIN_EMAIL || 'papesamabutik@gmail.com', username: 'Pape' },
     { email: 'pape@samabutik.com', username: 'PapeAdmin' },
     { email: '78177233ds@gmail.com', username: '78177233ds' }
   ];

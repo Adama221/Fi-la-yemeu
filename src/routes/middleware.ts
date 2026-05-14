@@ -13,12 +13,8 @@ export const authRequired = async (req: Request, res: Response, next: NextFuncti
   let user: any = null;
 
   try {
-    if (token === 'mock-token-pape') {
-       user = { role: 'admin', email: 'pape@samabutik.com', id: 1 };
-    } else {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      user = decoded;
-    }
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    user = decoded;
   } catch(e: any) {
     if (e.name === 'TokenExpiredError') {
       return res.status(401).json({ error: "Token expiré. Veuillez vous reconnecter." });
@@ -44,12 +40,8 @@ export const adminRequired = async (req: Request, res: Response, next: NextFunct
   let user: any = null;
 
   try {
-    if (token === 'mock-token-pape') {
-       user = { role: 'admin', email: 'pape@samabutik.com' };
-    } else {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      user = decoded;
-    }
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    user = decoded;
   } catch(e: any) {
     if (e.name === 'TokenExpiredError') {
       return res.status(401).json({ error: "Token expiré. Veuillez vous reconnecter." });

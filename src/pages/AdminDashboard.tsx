@@ -171,20 +171,37 @@ export default function AdminDashboard() {
 
   const handleUpdateDesign = async () => {
     try {
-      const formData = new FormData();
-      formData.append('primary_color', branding.primary_color);
-      formData.append('secondary_color', branding.secondary_color);
-      formData.append('text', branding.text);
+      let logoUrl = branding.logo;
+      const token = localStorage.getItem('auth_token');
+
       if (brandingFile) {
-        formData.append('logo', brandingFile);
-      } else {
-        formData.append('logo_url', branding.logo);
+        const formData = new FormData();
+        formData.append('image', brandingFile);
+        const upRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+        if (upRes.ok) {
+          const upData = await upRes.json();
+          logoUrl = upData.url;
+        }
       }
+
+      const data = {
+        primary_color: branding.primary_color,
+        secondary_color: branding.secondary_color,
+        text: branding.text,
+        logo_url: logoUrl
+      };
 
       const res = await fetch('/api/admin/design', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
-        body: formData
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
       });
       if (!res.ok) throw new Error("Erreur serveur");
       
@@ -234,31 +251,44 @@ export default function AdminDashboard() {
     if (isAddingProduct) return;
     setIsAddingProduct(true);
     try {
-      const formData = new FormData();
-      formData.append('name', productName);
-      formData.append('price', String(productPrice));
-      formData.append('description', productDescription);
-      formData.append('category', productCategory);
-      formData.append('stock', String(productStock));
-      formData.append('low_stock_threshold', String(productLowStock));
-      if (productCommission) {
-        formData.append('commission', String(productCommission));
-      }
-      
+      const token = localStorage.getItem('auth_token');
+      let currentImageUrl = productImage;
+
       if (productImageFiles.length > 0) {
-        // Backend only supports upload.single('image') because schema has a single image field
+        const formData = new FormData();
         formData.append('image', productImageFiles[0]);
-      } else if (productImage) {
-        formData.append('image_url', productImage);
+        const upRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+        if (upRes.ok) {
+          const upData = await upRes.json();
+          currentImageUrl = upData.url;
+        }
       }
 
+      const data = {
+        name: productName,
+        price: Number(productPrice),
+        description: productDescription,
+        category: productCategory,
+        stock: Number(productStock),
+        low_stock_threshold: Number(productLowStock),
+        commission: productCommission ? Number(productCommission) : undefined,
+        image_url: currentImageUrl
+      };
+
       const url = editingProduct ? `/api/admin/products/${editingProduct.id}/update` : '/api/admin/products';
-      const method = 'POST'; // Update also uses POST with /update suffix in server.ts
+      const method = 'POST';
 
       const res = await fetch(url, {
         method,
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
-        body: formData
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
       });
       if (!res.ok) throw new Error("Erreur");
 

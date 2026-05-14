@@ -2,7 +2,7 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-pour-samabutik';
+const SECRET_KEY = process.env.JWT_SECRET || 'super-secret-key-pour-samabutik';
 
 export function authRoutes(db: FirebaseFirestore.Firestore) {
   const router = Router();
@@ -32,28 +32,21 @@ export function authRoutes(db: FirebaseFirestore.Firestore) {
     }
 
     const payload = { id: user.id, email: user.email, role: user.role };
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+    // google auth
+    const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '24h' });
     res.json({ token, user });
   });
 
   router.post('/login', async (req, res) => {
-    const { identity, password } = req.body;
-    const cleanIdentity = identity?.trim() || '';
+    const { email, password } = req.body;
+    const cleanEmail = email?.trim()?.toLowerCase() || '';
     
-    if (!cleanIdentity || !password) {
+    if (!cleanEmail || !password) {
       return res.status(400).json({ error: "L'e-mail et le mot de passe sont requis." });
     }
 
     const usersRef = db.collection('users');
-    const lowerIdentity = cleanIdentity.toLowerCase();
-    
-    // Firestore does not natively support case-insensitive querying or OR queries across different fields easily like SQL
-    // We will do two independent lookups, or if we ensure emails are lowercase, it's easier.
-    // Assuming usernames/emails are case-sensitive here or matching exactly.
-    let snap = await usersRef.where('email', '==', lowerIdentity).limit(1).get();
-    if (snap.empty) {
-       snap = await usersRef.where('username', '==', cleanIdentity).limit(1).get();
-    }
+    const snap = await usersRef.where('email', '==', cleanEmail).limit(1).get();
 
     if (snap.empty) {
       return res.status(401).json({ error: "Utilisateur introuvable ou identifiants incorrects." });
@@ -63,19 +56,13 @@ export function authRoutes(db: FirebaseFirestore.Firestore) {
     const user: any = { id: doc.id, ...doc.data() };
 
     const isPasswordValid = await bcrypt.compare(password, user.password).catch(() => false);
-    const isOldPlaintextMatch = user.password === password;
 
-    if (!isPasswordValid && !isOldPlaintextMatch) {
+    if (!isPasswordValid) {
       return res.status(401).json({ error: "Mot de passe incorrect." });
     }
 
-    if (isOldPlaintextMatch && !isPasswordValid) {
-        const newHash = await bcrypt.hash(password, 10);
-        await doc.ref.update({ password: newHash });
-    }
-
     const payload = { id: user.id, email: user.email, role: user.role };
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '24h' });
     res.json({ token, user });
   });
 
@@ -103,7 +90,8 @@ export function authRoutes(db: FirebaseFirestore.Firestore) {
       const user: any = { id: newSnap.id, ...newSnap.data() };
       
       const payload = { id: user.id, email: user.email, role: user.role };
-      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+      // register auth
+      const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '24h' });
       res.json({ token, user });
     } catch (e: any) {
       res.status(400).json({ error: e.message });
@@ -115,7 +103,7 @@ export function authRoutes(db: FirebaseFirestore.Firestore) {
     if (!authHeader) return res.status(401).json({ error: "Non connecté." });
     try {
       const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const decoded = jwt.verify(token, SECRET_KEY) as any;
       const snap = await db.collection('users').doc(decoded.id).get();
       if (!snap.exists) throw new Error('Not found');
       
@@ -129,7 +117,7 @@ export function authRoutes(db: FirebaseFirestore.Firestore) {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.json({ valid: false });
     try {
-      jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+      jwt.verify(authHeader.split(' ')[1], SECRET_KEY);
       res.json({ valid: true });
     } catch { res.json({ valid: false }); }
   });

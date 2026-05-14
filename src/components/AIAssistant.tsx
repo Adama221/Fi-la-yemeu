@@ -53,7 +53,8 @@ export default function AIAssistant() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: userMsg || 'Analyse cette image pour me donner des conseils de mode.',
-          image: currentImg
+          image: currentImg,
+          history: chat.slice(-10).map(m => ({ role: m.role, text: m.text })) // Send last 10 messages for context
         })
       });
       const data = await res.json();

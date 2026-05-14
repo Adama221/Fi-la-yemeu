@@ -5,17 +5,41 @@ import { orderRoutes, newsletterRoutes } from './orders';
 import { adminRoutes } from '../pages/admin';
 import { affiliateRoutes } from './affiliate';
 import { generateResponse } from '../services/gemini';
+import multer from 'multer';
+import { join } from 'path';
+import { adminRequired } from './middleware';
 
 export function createApiRouter(db: any, uploadsDir: string) {
   const router = Router();
 
+  // Configure Multer for local storage
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + '-' + file.originalname);
+    }
+  });
+  const upload = multer({ storage });
+
+  // --- UPLOAD API ---
+  router.post('/upload', adminRequired, upload.single('image'), (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Aucun fichier téléchargé.' });
+    }
+    const imageUrl = `/uploads/${req.file.filename}`;
+    res.json({ success: true, url: imageUrl });
+  });
+
   // --- GEMINI AI ---
   router.post('/gemini/chat', async (req: Request, res: Response) => {
     try {
-      const { message, image } = req.body;
-      if (!message) return res.status(400).json({ error: 'Message requis' });
+      const { message, image, history } = req.body;
+      if (!message && !image) return res.status(400).json({ error: 'Message ou image requis' });
       
-      const response = await generateResponse(message, image);
+      const response = await generateResponse(message, image, history, db);
       res.json({ response });
     } catch (error: any) {
       console.error('Gemini Error:', error);
@@ -57,6 +81,23 @@ export function createApiRouter(db: any, uploadsDir: string) {
     try {
       const snap = await db.collection('settings').doc('config').get();
       res.json({ settings: snap.exists ? snap.data() : {} });
+    } catch (e) {
+      res.status(500).json({ error: 'Database error' });
+    }
+  });
+
+  router.put('/settings', adminRequired, async (req: Request, res: Response) => {
+    try {
+      const { logo, cover, primary_color, secondary_color, homepage_text } = req.body;
+      const updates: any = {};
+      if (logo !== undefined) updates.logo = logo;
+      if (cover !== undefined) updates.cover = cover;
+      if (primary_color !== undefined) updates.primary_color = primary_color;
+      if (secondary_color !== undefined) updates.secondary_color = secondary_color;
+      if (homepage_text !== undefined) updates.homepage_text = homepage_text;
+
+      await db.collection('settings').doc('config').set(updates, { merge: true });
+      res.json({ success: true });
     } catch (e) {
       res.status(500).json({ error: 'Database error' });
     }

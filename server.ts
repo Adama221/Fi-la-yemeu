@@ -7,7 +7,7 @@ import fs from 'fs';
 import { initDb } from './src/database';
 import { createApiRouter } from './src/routes/index';
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 export default async function startServer() {
   const app = express();
@@ -26,16 +26,20 @@ export default async function startServer() {
   }));
   app.use(express.json());
   
+  // Serve static files
   app.use('/uploads', express.static(uploadsDir));
 
   // Initialize DB and API router
   const db = await initDb();
   const apiRouter = createApiRouter(db, uploadsDir);
   
-  // Vercel handles the /api prefix via rewrites, but Express also needs to know about it
-  // or we can mount it at / and /api to be safe
+  // API routes mount
   app.use('/api', apiRouter);
-  app.use(apiRouter); // Fallback for when Vercel drops the prefix
+
+  // Health check for reverse proxy
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
 
   // Catch-all for API to prevent returning HTML for unknown API routes
   app.use('/api/*', (req, res) => {
@@ -51,22 +55,24 @@ export default async function startServer() {
   } else {
     const distPath = resolve(process.cwd(), 'dist');
     app.use(express.static(distPath));
+    // The catch-all MUST be last and NOT intercept /api or /uploads
     app.get('*', (req, res) => {
+      // If the request is for an API or upload that reached here, it's a 404
+      if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+        return res.status(404).json({ error: 'Not found' });
+      }
       res.sendFile(join(distPath, 'index.html'));
     });
   }
 
-  // Only listen if not running in Vercel serverless environment
-  if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
-  }
+  app.listen(Number(PORT), "0.0.0.0", () => {
+    console.log(`[SamaButik] Server running on http://0.0.0.0:${PORT}`);
+  });
 
   return app;
 }
 
-if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test') {
   startServer().catch(err => {
     console.error('Failed to start server:', err);
     process.exit(1);
